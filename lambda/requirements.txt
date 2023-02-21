@@ -1,0 +1,4 @@
+langchain==0.0.80
+slack-bolt==1.16.1
+slack-sdk==3.19.5
+openai==0.26.4

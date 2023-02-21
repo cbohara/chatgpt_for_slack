@@ -1,7 +1,9 @@
+import os
 from constructs import Construct
 from aws_cdk import (
     aws_iam as iam,
     aws_apigateway as apigw,
+    aws_lambda_python_alpha as python,
     aws_lambda as _lambda,
     aws_sqs,
     Aws,
@@ -14,12 +16,19 @@ class ApiLambdaStack(Stack):
     def __init__(self, scope: Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
         #Creating Lambda function that will be triggered by API gateway
-        lambda_function = _lambda.Function(
+        lambda_function = python.PythonFunction(
             self,
             'LambdaFunction',
-            handler='lambda_handler.handler',
-            runtime=_lambda.Runtime.PYTHON_3_7,
-            code=_lambda.Code.from_asset('lambda'),
+            runtime=_lambda.Runtime.PYTHON_3_9,
+            entry='lambda',
+            index='lambda_handler.py',
+            handler='handler',
+            environment={
+                'OPENAI_API_KEY': os.environ['OPENAI_API_KEY'],
+                'SLACK_BOT_TOKEN': os.environ['SLACK_BOT_TOKEN'],
+                'SLACK_SIGNING_SECRET': os.environ['SLACK_SIGNING_SECRET'],
+            },
+            timeout=Duration.seconds(120),
         )
 
         #Create the API GW service role with permissions to call SQS
@@ -34,16 +43,11 @@ class ApiLambdaStack(Stack):
         base_api = apigw.RestApi(
             self,
             'ApiGW',
-            rest_api_name='mlpal',
-            default_cors_preflight_options=apigw.CorsOptions(
-                allow_origins=["https://www.mlpal.com"],
-                allow_methods=["OPTIONS","POST"],
-                allow_headers=["Content-Type","X-Amz-Date","Authorization","X-Api-Key","X-Amz-Security-Token","hx-current-url","hx-request","hx-target","hx-trigger","hx-trigger-name"]
-            )
+            rest_api_name='slack',
         )
 
         #Create a resource named "email" on the base API
-        api_resource = base_api.root.add_resource('email')
+        api_resource = base_api.root.add_resource('events')
         method = api_resource.add_method("POST", apigw.LambdaIntegration(lambda_function))
 
         #Create dead letter queue for safekeeping
