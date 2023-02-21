@@ -1,0 +1,3 @@
+cdk.out/
+venv/
+api_lambda/__pycache__/
