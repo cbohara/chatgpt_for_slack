@@ -1,15 +1,23 @@
 import os
 import json
-import boto3
 import logging
+import boto3
 from slack_bolt import App
 from slack_bolt.adapter.aws_lambda import SlackRequestHandler
-from langchain import OpenAI, ConversationChain, LLMChain, PromptTemplate
+from langchain import OpenAI, LLMChain, PromptTemplate
 from langchain.chains.conversation.memory import ConversationalBufferWindowMemory
 
 
-logging.basicConfig(format="%(asctime)s %(message)s", level=logging.DEBUG)
 SlackRequestHandler.clear_all_log_handlers()
+logging.basicConfig(format="%(asctime)s %(message)s", level=logging.DEBUG)
+
+
+@app.middleware  # or app.use(log_request)
+def log_request(logger, body, next):
+    logger.debug(body)
+    return next()
+
+
 app = App(
     token=os.environ.get("SLACK_BOT_TOKEN"),
     signing_secret=os.environ.get("SLACK_SIGNING_SECRET"),
@@ -36,6 +44,7 @@ def get_prompt():
         template=template
     )
 
+
 def start_chat():
     return LLMChain(
         llm=OpenAI(temperature=0), 
@@ -45,7 +54,6 @@ def start_chat():
     )
 
 
-@app.event("app_mention")
 def app_mention_event(event, say, logger):
     team_id = event.get("team")
     channel_id = event.get("channel")
@@ -65,8 +73,10 @@ def app_mention_event(event, say, logger):
     say(openai_response, thread_ts=thread_ts)
 
 
-@app.event("message")
-def handle_message(event, say, logger):
+app.lazy_listener("app_mention")(app_mention_event)
+
+
+def message_event(event, say, logger):
     channel_type = event.get("channel_type")
     if channel_type == "im":
         channel_id = event.get("channel")
@@ -81,6 +91,8 @@ def handle_message(event, say, logger):
         user_input = event.get("text")
         openai_response = chat.predict(human_input=user_input)
         say(openai_response, channel=channel_id)
+
+app.lazy_listener("message")(message_event)
 
 
 def get_sqs_message(slack_event):
@@ -102,5 +114,20 @@ def send_sqs_message(sqs_message):
 
 
 def handler(event, context):
+    body = json.loads(event.get("body"))
+    bot_id = body.get("event").get("bot_id")
+    if bot_id:
+        return {
+            "statusCode": 200,
+            "body": json.dumps({"message": "Ignore bot"})
+        }
+
+    event_type = body.get("event").get("type")
+    if event_type not in ["app_mention", "message"]:
+        return {
+            "statusCode": 200,
+            "body": json.dumps({"message": "Ignore event"})
+        }
+
     slack_handler = SlackRequestHandler(app=app)
     return slack_handler.handle(event, context)

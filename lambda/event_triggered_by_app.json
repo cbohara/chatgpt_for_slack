@@ -1,0 +1,55 @@
+{
+    "body": {
+      "token": "u29j4nB3faXzGl9MJUlsWrK4",
+      "team_id": "T04L47VTW0Z",
+      "context_team_id": "T04L47VTW0Z",
+      "context_enterprise_id": null,
+      "api_app_id": "A04LFFL3URE",
+      "event": {
+        "client_msg_id": "99cc8f8f-c749-4d6f-a3be-09afd00cf504",
+        "type": "message",
+        "text": "<@U04KU9EAYNQ> What does the fox say",
+        "user": "U04NSB59LP9",
+        "ts": "1676942554.373649",
+        "blocks": [
+          {
+            "type": "rich_text",
+            "block_id": "ggr1",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "user",
+                    "user_id": "U04KU9EAYNQ"
+                  },
+                  {
+                    "type": "text",
+                    "text": " What does the fox say"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "team": "T04L47VTW0Z",
+        "channel": "C04L47VUPMX",
+        "event_ts": "1676942554.373649",
+        "channel_type": "channel"
+      },
+      "type": "event_callback",
+      "event_id": "Ev04QJRV6684",
+      "event_time": 1676942554,
+      "authorizations": [
+        {
+          "enterprise_id": null,
+          "team_id": "T04L47VTW0Z",
+          "user_id": "U04KU9EAYNQ",
+          "is_bot": true,
+          "is_enterprise_install": false
+        }
+      ],
+      "is_ext_shared_channel": false,
+      "event_context": "4-eyJldCI6Im1lc3NhZ2UiLCJ0aWQiOiJUMDRMNDdWVFcwWiIsImFpZCI6IkEwNExGRkwzVVJFIiwiY2lkIjoiQzA0TDQ3VlVQTVgifQ"
+    }
+  }
