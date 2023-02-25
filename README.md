@@ -50,3 +50,15 @@ To allow more time, added lazy listener function
 Doesn't work as a decorator    
 Instead it accepts 2 keyword args - ack() and lazy = list of processes related to the request 
 
+https://github.com/slackapi/bolt-python/issues/678
+https://github.com/slackapi/bolt-python/issues/693
+https://dev.to/aws-builders/slackapi-bolt-python-app-with-aws-lambda-and-aws-cdk-4h5d
+
+https://github.com/vumdao/slackapi-aws-lambda-bolt-python/blob/master/src/lambda-handler/index.py
+
+https://github.com/slackapi/bolt-js/issues/361
+
+Update API Gateway to respond success if lambda is going to time out   
+https://github.com/slackapi/bolt-python/issues/155
+
+https://github.com/seratch/slack_learning_app_ja/blob/9552489b1d5d3adc61a7c73645a1ae09abc9d933/lambda_app.py

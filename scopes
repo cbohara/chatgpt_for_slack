@@ -1,0 +1,1 @@
+channels:history,groups:history,im:history,mpim:history,app_mentions:read,channels:history,channels:join,channels:read,chat:write,chat:write.customize,commands,emoji:read,groups:history,groups:read,im:history,im:read,incoming-webhook,links:read,metadata.message:read,mpim:history,mpim:read,reactions:read,usergroups:read,users.profile:read,users:read,users:read.email,users:write

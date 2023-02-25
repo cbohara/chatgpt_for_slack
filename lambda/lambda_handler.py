@@ -1,9 +1,12 @@
+import time
 import os
 import json
 import logging
 import boto3
 from slack_bolt import App
 from slack_bolt.adapter.aws_lambda import SlackRequestHandler
+from slack_bolt.adapter.aws_lambda.lambda_s3_oauth_flow import LambdaS3OAuthFlow
+
 from langchain import OpenAI, LLMChain, PromptTemplate
 from langchain.chains.conversation.memory import ConversationalBufferWindowMemory
 
@@ -12,19 +15,13 @@ SlackRequestHandler.clear_all_log_handlers()
 logging.basicConfig(format="%(asctime)s %(message)s", level=logging.DEBUG)
 
 
-@app.middleware  # or app.use(log_request)
-def log_request(logger, body, next):
-    logger.debug(body)
-    return next()
-
-
 app = App(
-    token=os.environ.get("SLACK_BOT_TOKEN"),
-    signing_secret=os.environ.get("SLACK_SIGNING_SECRET"),
-    process_before_response=True
+    process_before_response=True,
+    oauth_flow=LambdaS3OAuthFlow()
 )
 private_chats = dict()
 public_chats = dict()
+
 
 
 def get_prompt():
@@ -47,22 +44,33 @@ def get_prompt():
 
 def start_chat():
     return LLMChain(
-        llm=OpenAI(temperature=0), 
+        llm=OpenAI(
+            temperature=0,
+            max_retries=0
+        ), 
         prompt=get_prompt(), 
         verbose=True, 
-        memory=ConversationalBufferWindowMemory(k=20),
+        memory=ConversationalBufferWindowMemory(k=10),
     )
 
 
+
+def respond_to_slack_within_3_seconds(body, ack):
+    ack("Let slack know app is processing request")
+
+
+# need to figure out how to avoid duplicate events
 def app_mention_event(event, say, logger):
     team_id = event.get("team")
     channel_id = event.get("channel")
     thread_ts = event.get("thread_ts")
 
     if thread_ts:
+        print("Retrieving existing public thread")
         public_chat_id = f'{team_id}-{channel_id}-{thread_ts}'
         chat = public_chats[public_chat_id]
     else:
+        print("Starting new public thread")
         thread_ts = event.get("event_ts")
         public_chat_id = f'{team_id}-{channel_id}-{thread_ts}'
         chat = start_chat()
@@ -73,26 +81,37 @@ def app_mention_event(event, say, logger):
     say(openai_response, thread_ts=thread_ts)
 
 
-app.lazy_listener("app_mention")(app_mention_event)
+app.event("app_mention")(
+    ack=respond_to_slack_within_3_seconds,
+    lazy=[app_mention_event]
+)
 
 
 def message_event(event, say, logger):
     channel_type = event.get("channel_type")
     if channel_type == "im":
+        team_id = event.get("team")
         channel_id = event.get("channel")
         user_id = event.get("user")
+        private_chat_id = f'{team_id}-{channel_id}-{user_id}'
 
         if user_id in private_chats:
-            chat = private_chats[user_id]
+            print("Retrieving existing private chat")
+            chat = private_chats[private_chat_id]
         else:
+            print("Starting new private chat")
             chat = start_chat()
-            private_chats[user_id] = chat
+            private_chats[private_chat_id] = chat
             
         user_input = event.get("text")
         openai_response = chat.predict(human_input=user_input)
         say(openai_response, channel=channel_id)
 
-app.lazy_listener("message")(message_event)
+
+app.event("message")(
+    ack=respond_to_slack_within_3_seconds,
+    lazy=[message_event]
+)
 
 
 def get_sqs_message(slack_event):
@@ -113,21 +132,46 @@ def send_sqs_message(sqs_message):
     )
 
 
+def challenge_response(challenge):
+    return {
+        'statusCode': 200,
+        'body': json.dumps({'challenge': challenge}),
+        'headers': {
+                "Content-Type": "application/json"
+        },
+    }
+
+
+def default_response(message="Successs"):
+    return {
+        "statusCode": 200,
+        "body": json.dumps({"message": message}),
+        "headers": {
+            "X-Slack-No-Retry": "1"
+        }
+    }
+
+
 def handler(event, context):
-    body = json.loads(event.get("body"))
-    bot_id = body.get("event").get("bot_id")
-    if bot_id:
-        return {
-            "statusCode": 200,
-            "body": json.dumps({"message": "Ignore bot"})
-        }
+    print(event)
+    print(context)
+    headers = event.get("headers")
+    if "X-Slack-Retry-Num" in headers:
+        return default_response("Ignore retry")
 
-    event_type = body.get("event").get("type")
-    if event_type not in ["app_mention", "message"]:
-        return {
-            "statusCode": 200,
-            "body": json.dumps({"message": "Ignore event"})
-        }
+    body = event.get("body")
+    if body:
+        body = json.loads(body)
 
-    slack_handler = SlackRequestHandler(app=app)
-    return slack_handler.handle(event, context)
+        if body.get("challenge"):
+            return challenge_response(body.get("challenge"))
+
+        bot_id = body.get("event").get("bot_id")
+        if bot_id:
+            return default_response("Ignore bot")
+
+        event_type = body.get("event").get("type")
+        if event_type not in ["app_mention", "message"]:
+            return default_response("Ignore event")
+
+    return SlackRequestHandler(app).handle(event, context)
