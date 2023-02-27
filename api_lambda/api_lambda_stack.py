@@ -35,7 +35,6 @@ class ApiLambdaStack(Stack):
                 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
             )
         )
-
         lambda_role.add_managed_policy(
             iam.ManagedPolicy.from_managed_policy_arn(
                 self,
@@ -51,7 +50,7 @@ class ApiLambdaStack(Stack):
             )
         )
 
-        # Creating Lambda function that will be triggered by API gateway
+        # Creating Lambda function that will be triggered by Lambda function URL
         lambda_function = python.PythonFunction(
             self,
             'LambdaFunction',
@@ -76,30 +75,6 @@ class ApiLambdaStack(Stack):
         # Create function URL
         function_url = lambda_function.add_function_url(
             auth_type=_lambda.FunctionUrlAuthType.NONE,
-        )
-
-        # Create the API GW service role with permissions to call SQS
-        rest_api_role = iam.Role(
-            self,
-            "RestAPIRole",
-            assumed_by=iam.ServicePrincipal("apigateway.amazonaws.com"),
-            managed_policies=[iam.ManagedPolicy.from_aws_managed_policy_name("AWSLambda_FullAccess")]
-        )
-
-        # Create an API GW Rest API
-        base_api = apigw.RestApi(
-            self,
-            'ApiGW',
-            rest_api_name='slack',
-        )
-
-        # Create a resource for the base API
-        api_resource = base_api.root.add_resource('events')
-
-        # Add POST method for slack to POST events to
-        post_method = api_resource.add_method(
-            "POST",
-            apigw.LambdaIntegration(lambda_function),
         )
 
         # Create dead letter queue for safekeeping
@@ -169,3 +144,28 @@ class ApiLambdaStack(Stack):
 
         # Attach the policy to the Lambda role so it can access S3
         lambda_role.add_to_policy(s3_policy)
+
+#        # Create the API GW service role with permissions to call SQS
+#        rest_api_role = iam.Role(
+#            self,
+#            "RestAPIRole",
+#            assumed_by=iam.ServicePrincipal("apigateway.amazonaws.com"),
+#            managed_policies=[iam.ManagedPolicy.from_aws_managed_policy_name("AWSLambda_FullAccess")]
+#        )
+#
+#        # Create an API GW Rest API
+#        base_api = apigw.RestApi(
+#            self,
+#            'ApiGW',
+#            rest_api_name='slack',
+#        )
+#
+#        # Create a resource for the base API
+#        api_resource = base_api.root.add_resource('events')
+#
+#        # Add POST method for slack to POST events to
+#        post_method = api_resource.add_method(
+#            "POST",
+#            apigw.LambdaIntegration(lambda_function),
+#        )
+#
