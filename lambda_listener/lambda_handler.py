@@ -23,7 +23,6 @@ private_chats = dict()
 public_chats = dict()
 
 
-
 def get_prompt():
     template = """Assistant is a large language model trained by OpenAI.
 

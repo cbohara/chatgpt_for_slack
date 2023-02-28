@@ -141,7 +141,7 @@ class SlackAppStack(Stack):
                 slack_state_store_bucket.bucket_arn,
                 f'{slack_state_store_bucket.bucket_arn}/*'
             ],
-            sid=f'{env}-slack-app-s3-access',
+            sid=f'{env}slackapp',
         )
 
         # Attach the policy to the Lambda role so it can access S3
