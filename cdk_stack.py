@@ -24,7 +24,7 @@ class SlackAppStack(Stack):
         # Creating IAM role for Lambda function
         lambda_role = iam.Role(
             self, 
-            'SlackAppLambdaRole',
+            f'{env}-slack-app-lambda-role',
             assumed_by=iam.ServicePrincipal('lambda.amazonaws.com'),
             role_name=f'{env}-slack-app-lambda-role'
         )
@@ -141,6 +141,7 @@ class SlackAppStack(Stack):
                 slack_state_store_bucket.bucket_arn,
                 f'{slack_state_store_bucket.bucket_arn}/*'
             ],
+            sid=f'{env}-slack-app-s3-access',
         )
 
         # Attach the policy to the Lambda role so it can access S3
