@@ -62,3 +62,6 @@ Update API Gateway to respond success if lambda is going to time out
 https://github.com/slackapi/bolt-python/issues/155
 
 https://github.com/seratch/slack_learning_app_ja/blob/9552489b1d5d3adc61a7c73645a1ae09abc9d933/lambda_app.py
+
+This is the link I'll share wtih folks with the landing page with a button to install the app   
+https://ybavldcu6tonw3tcwxjww2ffdi0jfanq.lambda-url.us-east-1.on.aws
