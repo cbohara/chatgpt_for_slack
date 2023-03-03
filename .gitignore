@@ -1,3 +1,5 @@
 cdk.out/
 venv/
 api_lambda/__pycache__/
+.env
+.env.*
