@@ -8,8 +8,9 @@ from slack_bolt import App
 from slack_bolt.adapter.aws_lambda import SlackRequestHandler
 from slack_bolt.adapter.aws_lambda.lambda_s3_oauth_flow import LambdaS3OAuthFlow
 
+
 SlackRequestHandler.clear_all_log_handlers()
-logging.basicConfig(format="%(asctime)s %(message)s", level=logging.DEBUG)
+logging.basicConfig(format="%(asctime)s %(message)s", level=logging.INFO)
 
 
 app = App(
@@ -19,9 +20,6 @@ app = App(
 private_chats = dict()
 public_chats = dict()
 
-
-#def respond_to_slack_within_3_seconds(body, ack):
-#    ack("Let slack know app is processing request")
 
 def start_chat():
     return [
@@ -34,37 +32,38 @@ def get_openai_response(chat):
         model="gpt-3.5-turbo",
         messages=chat
     )
+    print(response)
     return response["choices"][0]["message"]["content"]
 
 
 def trim_chat(chat):
-    if len(chat) == 5:
+    if len(chat) >= 5:
         del(chat[1:3])
         return chat
     return chat
     
 
 @app.event("app_mention")
-def app_mention_event(event, say, logger):
+def app_mention_event(event, say):
     team_id = event.get("team")
     channel_id = event.get("channel")
     thread_ts = event.get("thread_ts")
 
     if thread_ts:
-        print("Retrieving existing public thread")
         public_chat_id = f'{team_id}-{channel_id}-{thread_ts}'
+        print(f"Retrieving existing public thread: {public_chat_id}")
         chat = public_chats[public_chat_id]
     else:
-        print("Starting new public thread")
-        thread_ts = event.get("event_ts")
+        thread_ts = event.get("ts")
         public_chat_id = f'{team_id}-{channel_id}-{thread_ts}'
+        print(f"Starting new public thread: {public_chat_id}")
         chat = start_chat()
-        public_chats[public_chat_id] = chat
 
     user_input = event.get("text")
     chat.append(
         {"role": "user", "content": user_input}
     )
+    print(f"thread_ts: {thread_ts}")
     openai_response = get_openai_response(chat)
     say(openai_response, thread_ts=thread_ts)
     chat.append(
@@ -72,16 +71,12 @@ def app_mention_event(event, say, logger):
     )
     chat = trim_chat(chat)
     public_chats[public_chat_id] = chat
-
-
-#app.event("app_mention")(
-#    ack=respond_to_slack_within_3_seconds,
-#    lazy=[app_mention_event]
-#)
+    print(chat)
+    print(public_chats)
 
 
 @app.event("message")
-def message_event(event, say, logger):
+def message_event(event, say):
     channel_type = event.get("channel_type")
     if channel_type == "im":
         team_id = event.get("team")
@@ -89,13 +84,12 @@ def message_event(event, say, logger):
         user_id = event.get("user")
         private_chat_id = f'{team_id}-{channel_id}-{user_id}'
 
-        if user_id in private_chats:
+        if private_chat_id in private_chats:
             print("Retrieving existing private chat")
             chat = private_chats[private_chat_id]
         else:
             print("Starting new private chat")
             chat = start_chat()
-            private_chats[private_chat_id] = chat
             
         user_input = event.get("text")
         chat.append(
@@ -108,14 +102,22 @@ def message_event(event, say, logger):
         )
         chat = trim_chat(chat)
         private_chats[private_chat_id] = chat
+        print(chat)
+        print(private_chats)
 
 
+#def respond_to_slack_within_3_seconds(body, ack):
+#    ack("Let slack know app is processing request")
+
+#app.event("app_mention")(
+#    ack=respond_to_slack_within_3_seconds,
+#    lazy=[app_mention_event]
+#)
 
 #app.event("message")(
 #    ack=respond_to_slack_within_3_seconds,
 #    lazy=[message_event]
 #)
-
 
 #def get_sqs_message(slack_event):
 #    """
@@ -146,6 +148,7 @@ def challenge_response(challenge):
 
 
 def default_response(message="Successs"):
+    print(message)
     return {
         "statusCode": 200,
         "body": json.dumps({"message": message}),
@@ -159,7 +162,7 @@ def handler(event, context):
     print(event)
     print(context)
     headers = event.get("headers")
-    if "X-Slack-Retry-Num" in headers:
+    if "x-slack-retry-num" in headers:
         return default_response("Ignore retry")
 
     body = event.get("body")
