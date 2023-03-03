@@ -65,3 +65,8 @@ https://github.com/seratch/slack_learning_app_ja/blob/9552489b1d5d3adc61a7c73645
 
 This is the link I'll share wtih folks with the landing page with a button to install the app   
 https://ybavldcu6tonw3tcwxjww2ffdi0jfanq.lambda-url.us-east-1.on.aws
+
+
+[Free tier](https://docs.aws.amazon.com/whitepapers/latest/how-aws-pricing-works/get-started-with-the-aws-free-tier.html)
+Amazon DynamoDB: Up to 200 million requests per month (25 write capacity units (WCUs) and 25 read capacity units (RCUs)); 25 GB of storage.    
+AWS Lambda: 1 million free requests per month; up to 3.2 million seconds of compute time per month.   
