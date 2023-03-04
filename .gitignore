@@ -2,5 +2,3 @@ cdk.out/
 venv/
 .env
 .env.*
-lambda_listener/__pycache__/
-lambda_listener/.pytest_cache/

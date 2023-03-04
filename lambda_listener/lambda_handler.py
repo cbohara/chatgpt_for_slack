@@ -17,8 +17,6 @@ app = App(
     process_before_response=True,
     oauth_flow=LambdaS3OAuthFlow()
 )
-private_chats = dict()
-public_chats = dict()
 
 ddb = boto3.resource('dynamodb')
 public_chats_table = ddb.Table(os.environ['DDB_PUBLIC_CHATS'])
@@ -36,7 +34,6 @@ def get_openai_response(chat):
         model="gpt-3.5-turbo",
         messages=chat
     )
-    print(response)
     return response["choices"][0]["message"]["content"]
 
 
@@ -47,6 +44,29 @@ def trim_chat(chat):
     return chat
     
 
+def get_ddb_item(table, key_name, key_value):
+    response = table.get_item(
+        Key={key_name: key_value}
+    )
+    print(response)
+    return response.get("Item")
+
+
+def put_ddb_item(table, item):
+    response = table.put_item(
+        Item=item
+    )
+    print(response)
+    return response
+    
+
+def get_chat_from_ddb_item(item):
+    if item:
+        return item.get("chat")
+    else:
+        return None
+
+
 @app.event("app_mention")
 def app_mention_event(event, say):
     team_id = event.get("team")
@@ -56,7 +76,8 @@ def app_mention_event(event, say):
     if thread_ts:
         public_chat_id = f'{team_id}-{channel_id}-{thread_ts}'
         print(f"Retrieving existing public thread: {public_chat_id}")
-        chat = public_chats[public_chat_id]
+        #chat = public_chats[public_chat_id]
+        chat = get_chat_from_ddb_item(get_ddb_item(public_chats_table, "public_chat_id", public_chat_id))
     else:
         thread_ts = event.get("ts")
         public_chat_id = f'{team_id}-{channel_id}-{thread_ts}'
@@ -74,9 +95,14 @@ def app_mention_event(event, say):
         {"role": "assistant", "content": openai_response}
     )
     chat = trim_chat(chat)
-    public_chats[public_chat_id] = chat
     print(chat)
-    print(public_chats)
+    #public_chats[public_chat_id] = chat
+    #print(public_chats)
+    ddb_item = {
+        'public_chat_id': public_chat_id,
+        'chat': chat
+    }
+    put_ddb_item(public_chats_table, ddb_item)
 
 
 @app.event("message")
@@ -88,10 +114,8 @@ def message_event(event, say):
         user_id = event.get("user")
         private_chat_id = f'{team_id}-{channel_id}-{user_id}'
 
-        if private_chat_id in private_chats:
-            print("Retrieving existing private chat")
-            chat = private_chats[private_chat_id]
-        else:
+        chat = get_chat_from_ddb_item(get_ddb_item(private_chats_table, "private_chat_id", private_chat_id))
+        if not chat:
             print("Starting new private chat")
             chat = start_chat()
             
@@ -105,9 +129,13 @@ def message_event(event, say):
             {"role": "assistant", "content": openai_response}
         )
         chat = trim_chat(chat)
-        private_chats[private_chat_id] = chat
+        #private_chats[private_chat_id] = chat
         print(chat)
-        print(private_chats)
+        ddb_item = {
+            'private_chat_id': private_chat_id,
+            'chat': chat
+        }
+        put_ddb_item(private_chats_table, ddb_item)
 
 
 #def respond_to_slack_within_3_seconds(body, ack):
