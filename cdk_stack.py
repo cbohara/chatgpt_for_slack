@@ -75,7 +75,7 @@ class SlackAppStack(Stack):
             },
             timeout=Duration.seconds(300),
             role=lambda_role,
-            log_retention=logs.RetentionDays.ONE_WEEK
+            log_retention=logs.RetentionDays.ONE_MONTH
         )
 
         # Create function URL
