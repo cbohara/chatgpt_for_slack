@@ -2,11 +2,11 @@ import os
 from constructs import Construct
 from aws_cdk import (
     aws_iam as iam,
-    aws_apigateway as apigw,
     aws_s3 as s3,
     aws_lambda_python_alpha as python,
     aws_lambda as _lambda,
     aws_dynamodb as dynamodb,
+    aws_logs as logs,
     Stack,
     Duration,
     App
@@ -74,7 +74,8 @@ class SlackAppStack(Stack):
                 'DDB_PRIVATE_CHATS': os.environ['DDB_PRIVATE_CHATS']
             },
             timeout=Duration.seconds(300),
-            role=lambda_role
+            role=lambda_role,
+            log_retention=logs.RetentionDays.ONE_WEEK
         )
 
         # Create function URL
