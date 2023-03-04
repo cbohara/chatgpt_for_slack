@@ -7,7 +7,6 @@ from aws_cdk import (
     aws_lambda_python_alpha as python,
     aws_lambda as _lambda,
     aws_dynamodb as dynamodb,
-    aws_sqs,
     Stack,
     Duration,
     App
@@ -82,28 +81,6 @@ class SlackAppStack(Stack):
         function_url = lambda_listener_function.add_function_url(
             auth_type=_lambda.FunctionUrlAuthType.NONE,
         )
-
-#        # Create dead letter queue for safekeeping
-#        dead_letter_queue = aws_sqs.Queue(
-#            self,
-#            f'{env}-{name}-lambda-listener-dead-letter-queue',
-#            retention_period=Duration.days(14)
-#        )
-#
-#        # Send messages to sqs for processing
-#        queue = aws_sqs.Queue(
-#            self,
-#            f'{env}-{name}-lambda-listener-queue',
-#            retention_period=Duration.days(14),
-#            visibility_timeout=Duration.seconds(300),
-#            dead_letter_queue=aws_sqs.DeadLetterQueue(
-#                max_receive_count=4,
-#                queue=dead_letter_queue
-#            )
-#        )
-#
-#        # Grant Lambda to send message to SQS
-#        queue.grant_send_messages(lambda_listener_function)
 
 #        # Create S3 bucket for installation credentials
 #        slack_install_bucket = s3.Bucket(
