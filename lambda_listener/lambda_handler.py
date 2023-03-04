@@ -138,37 +138,6 @@ def message_event(event, say):
         put_ddb_item(private_chats_table, ddb_item)
 
 
-#def respond_to_slack_within_3_seconds(body, ack):
-#    ack("Let slack know app is processing request")
-
-#app.event("app_mention")(
-#    ack=respond_to_slack_within_3_seconds,
-#    lazy=[app_mention_event]
-#)
-
-#app.event("message")(
-#    ack=respond_to_slack_within_3_seconds,
-#    lazy=[message_event]
-#)
-
-#def get_sqs_message(slack_event):
-#    """
-#    Pass slack event into SQS message for downstream processing
-#    """
-#    return json.dumps(slack_event)
-#
-#
-#def send_sqs_message(sqs_message):
-#    """
-#    Send SQS message to SQS queue
-#    """
-#    sqs = boto3.client('sqs')
-#    sqs.send_message(
-#        QueueUrl="https://sqs.us-east-1.amazonaws.com/846078712375/ApiLambdaStack-Queue4A7E3555-5oHbpDACP4F4",
-#        MessageBody=sqs_message
-#    )
-
-
 def challenge_response(challenge):
     return {
         'statusCode': 200,
