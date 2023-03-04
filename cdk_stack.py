@@ -6,6 +6,7 @@ from aws_cdk import (
     aws_s3 as s3,
     aws_lambda_python_alpha as python,
     aws_lambda as _lambda,
+    aws_dynamodb as dynamodb,
     aws_sqs,
     Stack,
     Duration,
@@ -20,13 +21,14 @@ class SlackAppStack(Stack):
 
         aws_account = os.environ["CDK_DEFAULT_ACCOUNT"]
         env = os.environ["ENV"]
+        name = os.environ["NAME"]
 
         # Creating IAM role for Lambda function
         lambda_role = iam.Role(
             self, 
-            f'{env}-slack-app-lambda-role',
+            f'{env}-{name}-lambda-role',
             assumed_by=iam.ServicePrincipal('lambda.amazonaws.com'),
-            role_name=f'{env}-slack-app-lambda-role'
+            role_name=f'{env}-{name}-lambda-role'
         )
 
         # Attach policies to the IAM role
@@ -55,7 +57,7 @@ class SlackAppStack(Stack):
         # Creating Lambda function that will be triggered by Lambda function URL
         lambda_listener_function = python.PythonFunction(
             self,
-            f'{env}-lambda-listener-function',
+            f'{env}-{name}-lambda-listener-function',
             runtime=_lambda.Runtime.PYTHON_3_9,
             entry='lambda_listener',
             index='lambda_handler.py',
@@ -65,10 +67,12 @@ class SlackAppStack(Stack):
                 'SLACK_SIGNING_SECRET': os.environ['SLACK_SIGNING_SECRET'],
                 'SLACK_CLIENT_ID': os.environ['SLACK_CLIENT_ID'],
                 'SLACK_CLIENT_SECRET': os.environ['SLACK_CLIENT_SECRET'],
-                'SLACK_INSTALLATION_S3_BUCKET_NAME': os.environ['SLACK_INSTALLATION_S3_BUCKET_NAME'],
-                'SLACK_STATE_S3_BUCKET_NAME': os.environ['SLACK_STATE_S3_BUCKET_NAME'],
                 'SLACK_BOT_TOKEN': os.environ['SLACK_BOT_TOKEN'],
                 'SLACK_SCOPES': os.environ['SLACK_SCOPES'],
+                'SLACK_INSTALLATION_S3_BUCKET_NAME': os.environ['SLACK_INSTALLATION_S3_BUCKET_NAME'],
+                'SLACK_STATE_S3_BUCKET_NAME': os.environ['SLACK_STATE_S3_BUCKET_NAME'],
+                'DDB_PUBLIC_CHATS': os.environ['DDB_PUBLIC_CHATS'],
+                'DDB_PRIVATE_CHATS': os.environ['DDB_PRIVATE_CHATS']
             },
             timeout=Duration.seconds(300),
             role=lambda_role
@@ -79,53 +83,53 @@ class SlackAppStack(Stack):
             auth_type=_lambda.FunctionUrlAuthType.NONE,
         )
 
-        # Create dead letter queue for safekeeping
-        dead_letter_queue = aws_sqs.Queue(
-            self,
-            f'{env}-lambda-listener-dead-letter-queue',
-            retention_period=Duration.days(14)
-        )
-
-        # Send messages to sqs for processing
-        queue = aws_sqs.Queue(
-            self,
-            f'{env}-lambda-listener-queue',
-            retention_period=Duration.days(14),
-            visibility_timeout=Duration.seconds(300),
-            dead_letter_queue=aws_sqs.DeadLetterQueue(
-                max_receive_count=4,
-                queue=dead_letter_queue
-            )
-        )
-
-        # Grant Lambda to send message to SQS
-        queue.grant_send_messages(lambda_listener_function)
+#        # Create dead letter queue for safekeeping
+#        dead_letter_queue = aws_sqs.Queue(
+#            self,
+#            f'{env}-{name}-lambda-listener-dead-letter-queue',
+#            retention_period=Duration.days(14)
+#        )
+#
+#        # Send messages to sqs for processing
+#        queue = aws_sqs.Queue(
+#            self,
+#            f'{env}-{name}-lambda-listener-queue',
+#            retention_period=Duration.days(14),
+#            visibility_timeout=Duration.seconds(300),
+#            dead_letter_queue=aws_sqs.DeadLetterQueue(
+#                max_receive_count=4,
+#                queue=dead_letter_queue
+#            )
+#        )
+#
+#        # Grant Lambda to send message to SQS
+#        queue.grant_send_messages(lambda_listener_function)
 
 #        # Create S3 bucket for installation credentials
 #        slack_install_bucket = s3.Bucket(
 #            self,
 #            "SlackInstallationsBucket",
-#            bucket_name=f"{env}-slack-installations-s3-{aws_account}",
+#            bucket_name=f"{env}-{name}-installations-{aws_account}"
 #        )
 #        
 #        # Create S3 bucket for state variables during OAuth flow
 #        slack_state_store_bucket = s3.Bucket(
 #            self,
 #            "SlackStateStoreBucket",
-#            bucket_name=f"{env}-slack-state-store-s3-{aws_account}",
+#            bucket_name=f"{env}-{name}-state-store-{aws_account}"
 #        )
 
         # Import existing buckets
         slack_install_bucket = s3.Bucket.from_bucket_name(
             self,
-            f"{env}-slack-installations-s3-{aws_account}",
-            bucket_name=f"{env}-slack-installations-s3-{aws_account}",
+            f"{env}-{name}-installations-{aws_account}",
+            bucket_name=f"{env}-{name}-installations-{aws_account}"
         )
 
         slack_state_store_bucket = s3.Bucket.from_bucket_name(
             self,
-            f"{env}-slack-state-store-s3-{aws_account}",
-            bucket_name=f"{env}-slack-state-store-s3-{aws_account}",
+            f"{env}-{name}-state-store-{aws_account}",
+            bucket_name=f"{env}-{name}-state-store-{aws_account}"
         )
 
         # Define the IAM policy statement
@@ -141,11 +145,39 @@ class SlackAppStack(Stack):
                 slack_state_store_bucket.bucket_arn,
                 f'{slack_state_store_bucket.bucket_arn}/*'
             ],
-            sid=f'{env}slackapp',
+            sid=f'{env}{name.replace("-","")}app',
         )
 
         # Attach the policy to the Lambda role so it can access S3
         lambda_role.add_to_policy(s3_policy)
+
+                # Create DynamoDB table for storing public chats 
+        public_chats_table = dynamodb.Table(
+            self,
+            f'{env}-{name}-public-chats-table',
+            table_name=f'{env}_{name.replace("-","_")}_public_chats',
+            partition_key=dynamodb.Attribute(
+                name='public_chat_id',
+                type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+        )
+
+        # Create DynamoDB table for storing private chats
+        private_chats_table = dynamodb.Table(
+            self,
+            f'{env}-{name}-private-chats-table',
+            table_name=f'{env}_{name.replace("-","_")}_private_chats',
+            partition_key=dynamodb.Attribute(
+                name='private_chat_id',
+                type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+        )
+
+        # Update lambda function to read and write to dynamodb tables
+        public_chats_table.grant_read_write_data(lambda_listener_function)
+        private_chats_table.grant_read_write_data(lambda_listener_function)
 
 
 app = App()

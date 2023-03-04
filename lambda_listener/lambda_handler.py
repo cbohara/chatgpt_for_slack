@@ -20,6 +20,10 @@ app = App(
 private_chats = dict()
 public_chats = dict()
 
+ddb = boto3.resource('dynamodb')
+public_chats_table = ddb.Table(os.environ['DDB_PUBLIC_CHATS'])
+private_chats_table = ddb.Table(os.environ['DDB_PRIVATE_CHATS'])
+
 
 def start_chat():
     return [
