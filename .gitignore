@@ -5,3 +5,5 @@ venv/
 lambda_listener/__pycache__/
 tests/__pycache__/
 tets/.pytest_cache/
+.DS_Store
+.coverage

@@ -22,6 +22,11 @@ ddb = boto3.resource('dynamodb')
 public_chats_table = ddb.Table(os.environ['DDB_PUBLIC_CHATS'])
 private_chats_table = ddb.Table(os.environ['DDB_PRIVATE_CHATS'])
 
+OPENAI_MODEL = os.environ['OPENAI_MODEL']
+MAX_CHAT_LENGTH = int(os.environ['MAX_CHAT_LENGTH'])
+SLACK_EVENTS = os.environ['SLACK_EVENTS'].split(',')
+
+
 
 def start_chat():
     return [
@@ -31,16 +36,26 @@ def start_chat():
 
 def get_openai_response(chat):
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model=OPENAI_MODEL,
         messages=chat
     )
-    return response["choices"][0]["message"]["content"]
+    logging.info(f"OpenAI response: {response}")
+    return response
 
 
-def trim_chat(chat):
-    if len(chat) >= 5:
+def get_openai_message_content(response):
+    try:
+        return response["choices"][0]["message"]["content"]
+    except Exception as e:
+        logging.error(f"Error getting OpenAI message content: {e}")
+        return "Sorry, we are unable to process your request at this time. The OpenAI API is currently unavailable. Please try again later."
+
+
+def trim_chat(chat, max_length=MAX_CHAT_LENGTH):
+    if len(chat) > max_length:
         del(chat[1:3])
         return chat
+    logging.info(f"Chat length: {len(chat)}")
     return chat
     
 
@@ -48,7 +63,7 @@ def get_ddb_item(table, key_name, key_value):
     response = table.get_item(
         Key={key_name: key_value}
     )
-    print(response)
+    logging.info(f"get_ddb_item response: {response}")
     return response.get("Item")
 
 
@@ -56,89 +71,92 @@ def put_ddb_item(table, item):
     response = table.put_item(
         Item=item
     )
-    print(response)
+    logging.info(f"put_ddb_item response: {response}")
     return response
     
 
 def get_chat_from_ddb_item(item):
     if item:
+        logging.info(f"get_chat_from_ddb_item: {item}")
         return item.get("chat")
     else:
-        return None
+        logging.info(f"get_chat_from_ddb_item: no item found")
+        return []
+
+
+def save_chat_to_ddb(table, key_name, key_value, chat):
+    ddb_item = {
+        key_name: key_value,
+        'chat': chat
+    }
+    return put_ddb_item(table, ddb_item)
+
+
+def get_public_chat_id(event):
+    thread_ts = event.get("thread_ts")
+    if not thread_ts:
+        thread_ts = event.get("ts")
+    team_id = event.get("team")
+    channel_id = event.get("channel")
+    return f'{team_id}-{channel_id}-{thread_ts}'
+
+
+def get_private_chat_id(event):
+    team_id = event.get("team")
+    channel_id = event.get("channel")
+    user_id = event.get("user")
+    return f'{team_id}-{channel_id}-{user_id}'
+
+
+def add_to_chat(chat, role, content):
+    chat.append(
+        {"role": role, "content": content}
+    )
+    return chat
 
 
 @app.event("app_mention")
 def app_mention_event(event, say):
-    team_id = event.get("team")
-    channel_id = event.get("channel")
     thread_ts = event.get("thread_ts")
-
     if thread_ts:
-        public_chat_id = f'{team_id}-{channel_id}-{thread_ts}'
-        print(f"Retrieving existing public thread: {public_chat_id}")
-        #chat = public_chats[public_chat_id]
+        public_chat_id = get_public_chat_id(event)
         chat = get_chat_from_ddb_item(get_ddb_item(public_chats_table, "public_chat_id", public_chat_id))
+        logging.info(f"Retrieved existing public chat: {public_chat_id}")
     else:
         thread_ts = event.get("ts")
-        public_chat_id = f'{team_id}-{channel_id}-{thread_ts}'
-        print(f"Starting new public thread: {public_chat_id}")
+        public_chat_id = get_public_chat_id(event)
+        logging.info(f"Starting new public chat: {public_chat_id}")
         chat = start_chat()
 
-    user_input = event.get("text")
-    chat.append(
-        {"role": "user", "content": user_input}
-    )
-    print(f"thread_ts: {thread_ts}")
+    chat = add_to_chat(chat, "user", event.get("text"))
     openai_response = get_openai_response(chat)
     say(openai_response, thread_ts=thread_ts)
-    chat.append(
-        {"role": "assistant", "content": openai_response}
-    )
+    chat = add_to_chat(chat, "assistant", openai_response)
     chat = trim_chat(chat)
-    print(chat)
-    #public_chats[public_chat_id] = chat
-    #print(public_chats)
-    ddb_item = {
-        'public_chat_id': public_chat_id,
-        'chat': chat
-    }
-    put_ddb_item(public_chats_table, ddb_item)
+    save_chat_to_ddb(public_chats_table, "public_chat_id", public_chat_id, chat)
 
 
 @app.event("message")
 def message_event(event, say):
-    channel_type = event.get("channel_type")
-    if channel_type == "im":
-        team_id = event.get("team")
-        channel_id = event.get("channel")
-        user_id = event.get("user")
-        private_chat_id = f'{team_id}-{channel_id}-{user_id}'
-
+    if event.get("channel_type") == "im":
+        private_chat_id = get_private_chat_id(event)
         chat = get_chat_from_ddb_item(get_ddb_item(private_chats_table, "private_chat_id", private_chat_id))
         if not chat:
-            print("Starting new private chat")
+            logging.info("Starting new private chat")
             chat = start_chat()
+        else:
+            logging.info("Retrieved existing private chat")
+
             
-        user_input = event.get("text")
-        chat.append(
-            {"role": "user", "content": user_input}
-        )
+        chat = add_to_chat(chat, "user", event.get("text"))
         openai_response = get_openai_response(chat)
-        say(openai_response, channel=channel_id)
-        chat.append(
-            {"role": "assistant", "content": openai_response}
-        )
+        say(openai_response, channel=event.get("channel"))
+        chat = add_to_chat(chat, "assistant", openai_response)
         chat = trim_chat(chat)
-        #private_chats[private_chat_id] = chat
-        print(chat)
-        ddb_item = {
-            'private_chat_id': private_chat_id,
-            'chat': chat
-        }
-        put_ddb_item(private_chats_table, ddb_item)
+        response = save_chat_to_ddb(private_chats_table, "private_chat_id", private_chat_id, chat)
 
 
-def challenge_response(challenge):
+def slack_challenge_response(challenge):
     return {
         'statusCode': 200,
         'body': json.dumps({'challenge': challenge}),
@@ -149,7 +167,7 @@ def challenge_response(challenge):
 
 
 def default_response(message="Successs"):
-    print(message)
+    logging.info(f'default_response: {message}')
     return {
         "statusCode": 200,
         "body": json.dumps({"message": message}),
@@ -160,10 +178,10 @@ def default_response(message="Successs"):
 
 
 def handler(event, context):
-    print(event)
-    print(context)
-    headers = event.get("headers")
-    if "x-slack-retry-num" in headers:
+    logging.info(f'event: {event}')
+    logging.info(f'context: {context}')
+
+    if event.get("headers") and "x-slack-retry-num" in event.get("headers"):
         return default_response("Ignore retry")
 
     body = event.get("body")
@@ -171,14 +189,12 @@ def handler(event, context):
         body = json.loads(body)
 
         if body.get("challenge"):
-            return challenge_response(body.get("challenge"))
+            return slack_challenge_response(body.get("challenge"))
 
-        bot_id = body.get("event").get("bot_id")
-        if bot_id:
+        if body.get("event").get("bot_id"):
             return default_response("Ignore bot")
 
-        event_type = body.get("event").get("type")
-        if event_type not in ["app_mention", "message"]:
+        if body.get("event").get("type") not in SLACK_EVENTS:
             return default_response("Ignore event")
 
     return SlackRequestHandler(app).handle(event, context)

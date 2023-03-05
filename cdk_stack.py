@@ -63,6 +63,7 @@ class SlackAppStack(Stack):
             handler='handler',
             environment={
                 'OPENAI_API_KEY': os.environ['OPENAI_API_KEY'],
+                'OPENAI_MODEL': os.environ['OPENAI_MODEL'],
                 'SLACK_SIGNING_SECRET': os.environ['SLACK_SIGNING_SECRET'],
                 'SLACK_CLIENT_ID': os.environ['SLACK_CLIENT_ID'],
                 'SLACK_CLIENT_SECRET': os.environ['SLACK_CLIENT_SECRET'],
@@ -71,7 +72,8 @@ class SlackAppStack(Stack):
                 'SLACK_INSTALLATION_S3_BUCKET_NAME': os.environ['SLACK_INSTALLATION_S3_BUCKET_NAME'],
                 'SLACK_STATE_S3_BUCKET_NAME': os.environ['SLACK_STATE_S3_BUCKET_NAME'],
                 'DDB_PUBLIC_CHATS': os.environ['DDB_PUBLIC_CHATS'],
-                'DDB_PRIVATE_CHATS': os.environ['DDB_PRIVATE_CHATS']
+                'DDB_PRIVATE_CHATS': os.environ['DDB_PRIVATE_CHATS'],
+                'SLACK_EVENTS': os.environ['SLACK_EVENTS'],
             },
             timeout=Duration.seconds(300),
             role=lambda_role,
