@@ -74,6 +74,7 @@ class SlackAppStack(Stack):
                 'DDB_PUBLIC_CHATS': os.environ['DDB_PUBLIC_CHATS'],
                 'DDB_PRIVATE_CHATS': os.environ['DDB_PRIVATE_CHATS'],
                 'SLACK_EVENTS': os.environ['SLACK_EVENTS'],
+                'MAX_CHAT_LENGTH': os.environ['MAX_CHAT_LENGTH'],
             },
             timeout=Duration.seconds(300),
             role=lambda_role,

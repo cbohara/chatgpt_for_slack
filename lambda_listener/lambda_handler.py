@@ -27,7 +27,6 @@ MAX_CHAT_LENGTH = int(os.environ['MAX_CHAT_LENGTH'])
 SLACK_EVENTS = os.environ['SLACK_EVENTS'].split(',')
 
 
-
 def start_chat():
     return [
         {"role": "system", "content": "You are a helpful assistant."}
@@ -35,6 +34,7 @@ def start_chat():
 
 
 def get_openai_response(chat):
+    # TODO - Avoid hitting max token limit
     response = openai.ChatCompletion.create(
         model=OPENAI_MODEL,
         messages=chat
@@ -87,8 +87,9 @@ def get_chat_from_ddb_item(item):
 def save_chat_to_ddb(table, key_name, key_value, chat):
     ddb_item = {
         key_name: key_value,
-        'chat': chat
+        'chat': chat,
     }
+    logging.info(f'save_chat_to_ddb: {table} {ddb_item}')
     return put_ddb_item(table, ddb_item)
 
 
@@ -112,6 +113,7 @@ def add_to_chat(chat, role, content):
     chat.append(
         {"role": role, "content": content}
     )
+    logging.info(f'add_to_chat: {chat}')
     return chat
 
 
@@ -129,9 +131,9 @@ def app_mention_event(event, say):
         chat = start_chat()
 
     chat = add_to_chat(chat, "user", event.get("text"))
-    openai_response = get_openai_response(chat)
-    say(openai_response, thread_ts=thread_ts)
-    chat = add_to_chat(chat, "assistant", openai_response)
+    openai_message = get_openai_message_content(get_openai_response(chat))
+    say(openai_message, thread_ts=thread_ts)
+    chat = add_to_chat(chat, "assistant", openai_message)
     chat = trim_chat(chat)
     save_chat_to_ddb(public_chats_table, "public_chat_id", public_chat_id, chat)
 
@@ -142,18 +144,18 @@ def message_event(event, say):
         private_chat_id = get_private_chat_id(event)
         chat = get_chat_from_ddb_item(get_ddb_item(private_chats_table, "private_chat_id", private_chat_id))
         if not chat:
-            logging.info("Starting new private chat")
+            logging.info(f"Starting new private chat: {private_chat_id}")
             chat = start_chat()
         else:
-            logging.info("Retrieved existing private chat")
+            logging.info(f"Retrieved existing private chat: {private_chat_id}")
 
             
         chat = add_to_chat(chat, "user", event.get("text"))
-        openai_response = get_openai_response(chat)
-        say(openai_response, channel=event.get("channel"))
-        chat = add_to_chat(chat, "assistant", openai_response)
+        openai_message = get_openai_message_content(get_openai_response(chat))
+        say(openai_message, channel=event.get("channel"))
+        chat = add_to_chat(chat, "assistant", openai_message)
         chat = trim_chat(chat)
-        response = save_chat_to_ddb(private_chats_table, "private_chat_id", private_chat_id, chat)
+        save_chat_to_ddb(private_chats_table, "private_chat_id", private_chat_id, chat)
 
 
 def slack_challenge_response(challenge):
