@@ -47,3 +47,8 @@ AWS Lambda: 1 million free requests per month; up to 3.2 million seconds of comp
 https://api.slack.com/apps/A04LFFL3URE/oauth?
 prod link   
 https://22cv6vylhfcady2rsmzeeru53e0jatwy.lambda-url.us-east-1.on.aws/
+
+SLACK_BOT_TOKEN is found under the OAuth & Permissions tab      
+The DMs are under the App Home tab with the message tab toggle    
+
+CDK deploy will not update if changes in .env.dev or .env.prod   

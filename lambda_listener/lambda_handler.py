@@ -182,8 +182,10 @@ def default_response(message="Successs"):
 def handler(event, context):
     logging.info(f'event: {event}')
     logging.info(f'context: {context}')
+    headers = event.get("headers")
+    logging.info(f'headers: {headers}')
 
-    if event.get("headers") and "x-slack-retry-num" in event.get("headers"):
+    if headers and "x-slack-retry-num" in headers:
         return default_response("Ignore retry")
 
     body = event.get("body")
