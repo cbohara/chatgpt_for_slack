@@ -1,7 +1,8 @@
 cdk.out/
 venv/
 .env
-.env.*
+.env.dev
+.env.prod
 lambda_listener/__pycache__/
 tests/__pycache__/
 tets/.pytest_cache/
