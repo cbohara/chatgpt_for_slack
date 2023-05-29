@@ -159,3 +159,9 @@ def test_save_chat_to_ddb(dynamodb_mock, chat):
 
 def test_get_private_chat_id(message_event_private):
     assert lambda_handler.get_private_chat_id(message_event_private) == "T04L47VTW0Z-C04L47VUPMX-U04NSB59LP9"
+
+
+def test_get_slack_email(slack_users_info_response):
+    assert lambda_handler.get_slack_email(slack_users_info_response) == "test.user@gmail.com"
+    assert lambda_handler.get_slack_email({}) is None
+
