@@ -27,6 +27,18 @@ MAX_CHAT_LENGTH = int(os.environ['MAX_CHAT_LENGTH'])
 SLACK_EVENTS = os.environ['SLACK_EVENTS'].split(',')
 
 
+def get_users_info_from_slack(user_id):
+    try:
+        result = app.client.users_info(
+            user=user_id
+        )
+        logging.info(result)
+    except Exception as e:
+        logging.error("Error fetching users info: {}".format(e))
+    else:
+        return result
+
+
 def start_chat():
     return [
         {"role": "system", "content": "You are a helpful assistant."}
@@ -201,4 +213,10 @@ def handler(event, context):
         if body.get("event").get("type") not in SLACK_EVENTS:
             return default_response("Ignore event")
 
-    return SlackRequestHandler(app).handle(event, context)
+    user_id = body.get("event").get("user")
+    if user_id:
+        result = get_users_info_from_slack(user_id)
+        logging.info(result)
+
+    slack_handler = SlackRequestHandler(app=app)
+    return slack_handler.handle(event, context)
