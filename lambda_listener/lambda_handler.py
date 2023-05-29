@@ -168,6 +168,56 @@ def get_user_record(event):
     return user_record
 
 
+def slack_challenge_response(challenge):
+    return {
+        'statusCode': 200,
+        'body': json.dumps({'challenge': challenge}),
+        'headers': {
+                "Content-Type": "application/json"
+        },
+    }
+
+
+def default_response(message="Successs"):
+    logging.info(f'default_response: {message}')
+    return {
+        "statusCode": 200,
+        "body": json.dumps({"message": message}),
+        "headers": {
+            "X-Slack-No-Retry": "1"
+        }
+    }
+
+
+def get_home_view():
+    return {
+    "type": "home",
+    "callback_id": "home_view",
+    "blocks": [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": ":wave: **Hi! I'm Bounce, your ChatGPT for Slack app!**",
+            },
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Subscribe now!",
+                    },
+                    "url": "https://buy.stripe.com/3csdRddRggsYfi8eUW",
+                },
+            ],
+        },
+    ],
+}
+
+
 @app.event("app_mention")
 def app_mention_event(event, say):
     user_record = get_user_record(event)
@@ -222,25 +272,12 @@ def message_event(event, say):
             say(get_inactive_message(), channel=channel)
 
 
-def slack_challenge_response(challenge):
-    return {
-        'statusCode': 200,
-        'body': json.dumps({'challenge': challenge}),
-        'headers': {
-                "Content-Type": "application/json"
-        },
-    }
-
-
-def default_response(message="Successs"):
-    logging.info(f'default_response: {message}')
-    return {
-        "statusCode": 200,
-        "body": json.dumps({"message": message}),
-        "headers": {
-            "X-Slack-No-Retry": "1"
-        }
-    }
+@app.event("app_home_opened")
+def app_home_opened_event(client, event, logger):
+    response = client.views_publish(
+        user_id=event["user"],
+        view=get_home_view()
+    )
 
 
 def handler(event, context):
