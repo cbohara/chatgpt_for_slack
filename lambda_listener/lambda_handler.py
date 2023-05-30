@@ -200,11 +200,31 @@ def get_home_view(user_record):
         },
     ]
     if user_record.get("plan_type") == "paid":
+        blocks.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "Thanks for subscribing! Please share with your friends and colleagues!",
+                },
+            }
+        )
         return {
             "type": "home",
             "callback_id": "home_view",
             "blocks": blocks
         }
+
+    if user_record.get("plan_type") == "free":
+        blocks.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "Welcome to your 7 day free trial!",
+                },
+            }
+        )
 
     blocks.extend([
         {
@@ -343,7 +363,7 @@ def handler(event, context):
         user_record = {
             "user_id": slack_email,
             'start_timestamp': get_timestamp(),
-            'plan_type': 'free', # lifetime, monthly, expired
+            'plan_type': 'free', # lifetime, monthly, expired, paid
             'active': True, 
             'slack_memberships': [{"slack_user_id": slack_user_id, "slack_team_id": slack_team_id}]
         }
