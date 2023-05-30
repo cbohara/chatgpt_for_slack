@@ -4,6 +4,8 @@ import logging
 import datetime
 import boto3
 import openai
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
 from slack_bolt import App
 from slack_bolt.adapter.aws_lambda import SlackRequestHandler
 from slack_bolt.adapter.aws_lambda.lambda_s3_oauth_flow import LambdaS3OAuthFlow
@@ -23,30 +25,30 @@ users_table = ddb.Table(os.environ['DDB_USERS'])
 public_chats_table = ddb.Table(os.environ['DDB_PUBLIC_CHATS'])
 private_chats_table = ddb.Table(os.environ['DDB_PRIVATE_CHATS'])
 
-users_cache = {}
-
 OPENAI_MODEL = os.environ['OPENAI_MODEL']
 MAX_CHAT_LENGTH = int(os.environ['MAX_CHAT_LENGTH'])
 SLACK_EVENTS = os.environ['SLACK_EVENTS'].split(',')
+SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
 
 
-def get_slack_users_info(user_id):
-    try:
-        response = app.client.users_info(
-            user=user_id
-        )
-        logging.info(response)
-    except Exception as e:
-        logging.error("Error fetching users info: {}".format(e))
-    else:
-        return response
+#def get_slack_users_info(user_id):
+#    client = WebClient(token=SLACK_BOT_TOKEN)
+#    try:
+#        result = client.users_info(
+#            user=user_id
+#        )
+#        logging.info(result)
+#    except SlackApiError as e:
+#        logging.error("Error fetching user: {}".format(e))
+#    else:
+#        return result
 
 
-def get_slack_email(response):
-    if response:
-        return response.get('user').get('profile').get('email')
-    return None
-
+#def get_slack_email(response):
+#    if response:
+#        return response.get('user').get('profile').get('email')
+#    return None
+#
 
 def start_chat():
     return [
@@ -118,10 +120,10 @@ def get_timestamp():
     return round(datetime.datetime.utcnow().timestamp())
 
 
-def add_new_user(ddb_item):
-    logging.info(f'add_new_user: {users_table} {ddb_item}')
-    return put_ddb_item(users_table, ddb_item)
-
+#def add_new_user(ddb_item):
+#    logging.info(f'add_new_user: {users_table} {ddb_item}')
+#    return put_ddb_item(users_table, ddb_item)
+#
 
 def get_public_chat_id(event):
     thread_ts = event.get("thread_ts")
@@ -153,19 +155,15 @@ def add_to_chat(chat, role, content):
     return chat
 
 
-def get_inactive_message():
-    return "Your free trial is over. Visit the Home tab to upgrade now!"
+#def get_inactive_message():
+#    return "Your free trial is over. Visit the Home tab to upgrade now!"
 
 
-def get_user_record(event):
-    slack_id = get_slack_id(event)
-    user_record = users_cache.get(slack_id)
-    if not user_record:
-        slack_user_id = event.get("user")
-        slack_email = get_slack_email(get_slack_users_info(slack_user_id))
-        user_record = get_ddb_item(users_table, "user_id", slack_email)
-        users_cache[slack_id] = user_record
-    return user_record
+#def get_user_record(event):
+#    slack_user_id = event.get("user")
+#    slack_email = get_slack_email(get_slack_users_info(slack_user_id))
+#    user_record = get_ddb_item(users_table, "user_id", slack_email)
+#    return user_record
 
 
 def slack_challenge_response(challenge):
@@ -189,7 +187,7 @@ def default_response(message="Successs"):
     }
 
 
-def get_home_view(user_record):
+def get_home_view():
     blocks = [
         {
             "type": "section",
@@ -198,35 +196,6 @@ def get_home_view(user_record):
                 "text": ":wave: Hi! I'm Bounce, your ChatGPT for Slack app!",
             },
         },
-    ]
-    if user_record.get("plan_type") == "paid":
-        blocks.append(
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "Thanks for subscribing! Please share with your friends and colleagues!",
-                },
-            }
-        )
-        return {
-            "type": "home",
-            "callback_id": "home_view",
-            "blocks": blocks
-        }
-
-    if user_record.get("plan_type") == "free":
-        blocks.append(
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "Welcome to your 7 day free trial!",
-                },
-            }
-        )
-
-    blocks.extend([
         {
             "type": "section",
             "text": {
@@ -260,7 +229,8 @@ def get_home_view(user_record):
                 },
             ],
         },
-    ])
+    ]
+
     return {
         "type": "home",
         "callback_id": "home_view",
@@ -270,70 +240,67 @@ def get_home_view(user_record):
 
 @app.event("app_mention")
 def app_mention_event(event, say):
-    user_record = get_user_record(event)
+#   user_record = get_user_record(event)
     thread_ts = event.get("thread_ts")
 
-    if user_record and user_record.get("active"):
-        if thread_ts:
-            public_chat_id = get_public_chat_id(event)
-            chat = get_chat_from_ddb_item(get_ddb_item(public_chats_table, "public_chat_id", public_chat_id))
-            logging.info(f"Retrieved existing public chat: {public_chat_id}")
-        else:
-            thread_ts = event.get("ts")
-            public_chat_id = get_public_chat_id(event)
-            logging.info(f"Starting new public chat: {public_chat_id}")
-            chat = start_chat()
-
-        chat = add_to_chat(chat, "user", event.get("text"))
-        openai_message = get_openai_message_content(get_openai_response(chat))
-        say(openai_message, thread_ts=thread_ts)
-        chat = add_to_chat(chat, "assistant", openai_message)
-        chat = trim_chat(chat)
-        save_chat_to_ddb(public_chats_table, "public_chat_id", public_chat_id, chat)
+#    if user_record and user_record.get("active"):
+    if thread_ts:
+        public_chat_id = get_public_chat_id(event)
+        chat = get_chat_from_ddb_item(get_ddb_item(public_chats_table, "public_chat_id", public_chat_id))
+        logging.info(f"Retrieved existing public chat: {public_chat_id}")
     else:
-        if thread_ts:
-            say(get_inactive_message(), thread_ts=thread_ts)
-        else:
-            say(get_inactive_message(), thread_ts=event.get("ts"))
+        thread_ts = event.get("ts")
+        public_chat_id = get_public_chat_id(event)
+        logging.info(f"Starting new public chat: {public_chat_id}")
+        chat = start_chat()
+
+    chat = add_to_chat(chat, "user", event.get("text"))
+    openai_message = get_openai_message_content(get_openai_response(chat))
+    say(openai_message, thread_ts=thread_ts)
+    chat = add_to_chat(chat, "assistant", openai_message)
+    chat = trim_chat(chat)
+    save_chat_to_ddb(public_chats_table, "public_chat_id", public_chat_id, chat)
+#    else:
+#        if thread_ts:
+#            say(get_inactive_message(), thread_ts=thread_ts)
+#        else:
+#            say(get_inactive_message(), thread_ts=event.get("ts"))
 
 
 @app.event("message")
 def message_event(event, say):
-    user_record = get_user_record(event)
+#    user_record = get_user_record(event)
     channel = event.get("channel")
     
     if event.get("channel_type") == "im":
-        if user_record and user_record.get("active"):
-            private_chat_id = get_private_chat_id(event)
-            chat = get_chat_from_ddb_item(get_ddb_item(private_chats_table, "private_chat_id", private_chat_id))
-            if not chat:
-                logging.info(f"starting new private chat: {private_chat_id}")
-                chat = start_chat()
-            else:
-                logging.info(f"retrieved existing private chat: {private_chat_id}")
-                
-            chat = add_to_chat(chat, "user", event.get("text"))
-            openai_message = get_openai_message_content(get_openai_response(chat))
-            say(openai_message, channel=channel)
-            chat = add_to_chat(chat, "assistant", openai_message)
-            chat = trim_chat(chat)
-            save_chat_to_ddb(private_chats_table, "private_chat_id", private_chat_id, chat)
+#        if user_record and user_record.get("active"):
+        private_chat_id = get_private_chat_id(event)
+        chat = get_chat_from_ddb_item(get_ddb_item(private_chats_table, "private_chat_id", private_chat_id))
+        if not chat:
+            logging.info(f"starting new private chat: {private_chat_id}")
+            chat = start_chat()
         else:
-            say(get_inactive_message(), channel=channel)
+            logging.info(f"retrieved existing private chat: {private_chat_id}")
+            
+        chat = add_to_chat(chat, "user", event.get("text"))
+        openai_message = get_openai_message_content(get_openai_response(chat))
+        say(openai_message, channel=channel)
+        chat = add_to_chat(chat, "assistant", openai_message)
+        chat = trim_chat(chat)
+        save_chat_to_ddb(private_chats_table, "private_chat_id", private_chat_id, chat)
+#        else:
+#            say(get_inactive_message(), channel=channel)
 
 
 @app.event("app_home_opened")
 def app_home_opened_event(client, event, logger):
-    user_record = get_user_record(event)
     response = client.views_publish(
         user_id=event["user"],
-        view=get_home_view(user_record)
+        view=get_home_view()
     )
 
 
 def handler(event, context):
-    global users_cache
-
     logging.info(f'event: {event}')
     logging.info(f'context: {context}')
     headers = event.get("headers")
@@ -355,23 +322,19 @@ def handler(event, context):
         if body.get("event").get("type") not in SLACK_EVENTS:
             return default_response("Ignore event")
 
-    slack_user_id = body.get("event").get("user")
-    slack_team_id = body.get("event").get("team")
-    slack_email = get_slack_email(get_slack_users_info(slack_user_id))
-    user_record = get_ddb_item(users_table, "user_id", slack_email)
-    if not user_record:
-        user_record = {
-            "user_id": slack_email,
-            'start_timestamp': get_timestamp(),
-            'plan_type': 'free', # lifetime, monthly, expired, paid
-            'active': True, 
-            'slack_memberships': [{"slack_user_id": slack_user_id, "slack_team_id": slack_team_id}]
-        }
-        logging.info(f'new user: {user_record}')
-        add_new_user(user_record)
-    
-    slack_id = f'{slack_team_id}-{slack_user_id}'
-    users_cache[slack_id] = user_record
+#        slack_user_id = body.get("event").get("user")
+#        if slack_user_id:
+#            slack_email = get_slack_email(get_slack_users_info(slack_user_id))
+#            user_record = get_ddb_item(users_table, "user_id", slack_email)
+#            if not user_record:
+#                user_record = {
+#                    "user_id": slack_email,
+#                    'start_timestamp': get_timestamp(),
+#                    'plan_type': 'free', # lifetime, monthly, expired
+#                    'active': True, 
+#                }
+#                logging.info(f'new user: {user_record}')
+#                add_new_user(user_record)
     
     slack_handler = SlackRequestHandler(app=app)
     return slack_handler.handle(event, context)
