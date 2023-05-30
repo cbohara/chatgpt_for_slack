@@ -189,16 +189,29 @@ def default_response(message="Successs"):
     }
 
 
-def get_home_view():
-    return {
-    "type": "home",
-    "callback_id": "home_view",
-    "blocks": [
+def get_home_view(user_record):
+    blocks = [
         {
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": ":wave: **Hi! I'm Bounce, your ChatGPT for Slack app!**",
+                "text": ":wave: Hi! I'm Bounce, your ChatGPT for Slack app!",
+            },
+        },
+    ]
+    if user_record.get("plan_type") == "paid":
+        return {
+            "type": "home",
+            "callback_id": "home_view",
+            "blocks": blocks
+        }
+
+    blocks.extend([
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "Interested in subscribing? Click one of the buttons below to get started!",
             },
         },
         {
@@ -208,14 +221,31 @@ def get_home_view():
                     "type": "button",
                     "text": {
                         "type": "plain_text",
-                        "text": "Subscribe now!",
+                        "text": "Lifetime access for only $100",
+                    },
+                    "url": "https://buy.stripe.com/cN23czdRg2C8ee4cMP",
+                },
+            ],
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Monthly access for $5/month",
                     },
                     "url": "https://buy.stripe.com/3csdRddRggsYfi8eUW",
                 },
             ],
         },
-    ],
-}
+    ])
+    return {
+        "type": "home",
+        "callback_id": "home_view",
+        "blocks": blocks
+    }
 
 
 @app.event("app_mention")
@@ -274,9 +304,10 @@ def message_event(event, say):
 
 @app.event("app_home_opened")
 def app_home_opened_event(client, event, logger):
+    user_record = get_user_record(event)
     response = client.views_publish(
         user_id=event["user"],
-        view=get_home_view()
+        view=get_home_view(user_record)
     )
 
 
@@ -312,7 +343,7 @@ def handler(event, context):
         user_record = {
             "user_id": slack_email,
             'start_timestamp': get_timestamp(),
-            'plan_type': 'free', 
+            'plan_type': 'free', # lifetime, monthly, expired
             'active': True, 
             'slack_memberships': [{"slack_user_id": slack_user_id, "slack_team_id": slack_team_id}]
         }
