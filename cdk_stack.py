@@ -71,7 +71,8 @@ class SlackAppStack(Stack):
                 'SLACK_SCOPES': os.environ['SLACK_SCOPES'],
                 'SLACK_INSTALLATION_S3_BUCKET_NAME': os.environ['SLACK_INSTALLATION_S3_BUCKET_NAME'],
                 'SLACK_STATE_S3_BUCKET_NAME': os.environ['SLACK_STATE_S3_BUCKET_NAME'],
-                'DDB_USERS': os.environ['DDB_USERS'],
+                'DDB_USERS_ID': os.environ['DDB_USERS_ID'],
+                'DDB_USERS_EMAIL': os.environ['DDB_USERS_EMAIL'],
                 'DDB_PUBLIC_CHATS': os.environ['DDB_PUBLIC_CHATS'],
                 'DDB_PRIVATE_CHATS': os.environ['DDB_PRIVATE_CHATS'],
                 'SLACK_EVENTS': os.environ['SLACK_EVENTS'],
@@ -134,12 +135,23 @@ class SlackAppStack(Stack):
         lambda_role.add_to_policy(s3_policy)
 
         # Create DynamoDB table for storing users
-        users_table = dynamodb.Table(
+        users_email_table = dynamodb.Table(
             self,
-            f'{env}-{name}-users-table',
-            table_name=f'{env}_{name.replace("-","_")}_users',
+            f'{env}-{name}-users-email-table',
+            table_name=f'{env}_{name.replace("-","_")}_users_email',
             partition_key=dynamodb.Attribute(
-                name='user_id',
+                name='email',
+                type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+        )
+
+        users_id_table = dynamodb.Table(
+            self,
+            f'{env}-{name}-users-id-table',
+            table_name=f'{env}_{name.replace("-","_")}_users_id',
+            partition_key=dynamodb.Attribute(
+                name='slack_id',
                 type=dynamodb.AttributeType.STRING
             ),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -170,7 +182,8 @@ class SlackAppStack(Stack):
         )
 
         # Update lambda function to read and write to dynamodb tables
-        users_table.grant_read_write_data(lambda_listener_function)
+        users_email_table.grant_read_write_data(lambda_listener_function)
+        users_id_table.grant_read_write_data(lambda_listener_function)
         public_chats_table.grant_read_write_data(lambda_listener_function)
         private_chats_table.grant_read_write_data(lambda_listener_function)
 

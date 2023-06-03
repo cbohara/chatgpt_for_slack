@@ -2,6 +2,7 @@ import pytest
 import boto3
 from lambda_listener import lambda_handler
 from moto import mock_dynamodb
+from freezegun import freeze_time
 
 
 def test_start_chat():
@@ -161,7 +162,16 @@ def test_get_private_chat_id(message_event_private):
     assert lambda_handler.get_private_chat_id(message_event_private) == "T04L47VTW0Z-C04L47VUPMX-U04NSB59LP9"
 
 
-def test_get_slack_email(slack_users_info_response):
-    assert lambda_handler.get_slack_email(slack_users_info_response) == "test.user@gmail.com"
-    assert lambda_handler.get_slack_email({}) is None
+def test_get_email(slack_users_info_response):
+    assert lambda_handler.get_email(slack_users_info_response) == "test.user@gmail.com"
+    assert lambda_handler.get_email({}) is None
 
+
+def test_get_slack_id(slack_users_info_response):
+    assert lambda_handler.get_slack_id(slack_users_info_response) == 'U04KU2Y1AMS-T04L47VTW0Z'
+    assert lambda_handler.get_slack_id({}) is None
+
+
+@freeze_time('2020-09-01 1:45:01')
+def test_get_timestamp():
+    assert lambda_handler.get_timestamp() == 1598924701

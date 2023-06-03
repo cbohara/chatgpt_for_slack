@@ -52,3 +52,27 @@ SLACK_BOT_TOKEN is found under the OAuth & Permissions tab
 The DMs are under the App Home tab with the message tab toggle    
 
 CDK deploy will not update if changes in .env.dev or .env.prod   
+
+Ok so I can get the user ID and team ID and email from slack when users visit the home page     
+The user ID + team ID are unique across all slack workspaces so that works as a primary key    
+Billing will be mapped to user's email in Stripe     
+In the events itself we can access the user ID + team ID   
+
+If the primary access pattern especially for user facing interaction is user ID + team ID, that should be the primary key   
+
+I can have 2 dynamodb tables   
+one that uses the user ID + team ID as the primary key 
+
+one that uses the email as the primary key and has a list of user ID + team ID combos     
+this table will be accessed by event driven stripe call to update billing info    
+but then it would need to update the user ID + billing ID table ....    
+
+userID + teamID + email as primary key    
+
+ok so first time on the home page register a new user   
+first table - set the user ID + team ID as a primary key and email will be a value along with other metadata    
+slack app will query first table directly usin user ID + team ID to get info whether user should get service or not   
+
+second table - set email as primary key and map to user ID + team ID list    
+billing backend services will update the second table which it can access using the user ID + team ID list upon event driven stripe call    
+it will then update the first table    
