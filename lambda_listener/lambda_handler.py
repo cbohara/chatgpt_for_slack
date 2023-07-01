@@ -20,7 +20,6 @@ app = App(
     oauth_flow=LambdaS3OAuthFlow()
 )
 
-users_cache = {}
 ddb = boto3.resource('dynamodb')
 users_id_table = ddb.Table(os.environ['DDB_USERS_ID'])
 users_email_table = ddb.Table(os.environ['DDB_USERS_EMAIL'])
@@ -31,6 +30,10 @@ OPENAI_MODEL = os.environ['OPENAI_MODEL']
 MAX_CHAT_LENGTH = int(os.environ['MAX_CHAT_LENGTH'])
 SLACK_EVENTS = os.environ['SLACK_EVENTS'].split(',')
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
+
+STRIPE_MONTHLY_LINK= os.environ['STRIPE_MONTHLY_LINK']
+STRIPE_ANNUAL_LINK= os.environ['STRIPE_ANNUAL_LINK']
+STRIPE_LIFETIME_LINK= os.environ['STRIPE_LIFETIME_LINK']
 
 
 def start_chat():
@@ -114,6 +117,7 @@ def get_timestamp():
 def add_new_user(slack_id, email):
     start_timestamp = get_timestamp()
     users_email_ddb_item = get_ddb_item(users_email_table, 'email', email)
+    logging.info(f"add_new_user users_email_ddb_item: {users_email_ddb_item}")
     if not users_email_ddb_item:
         users_email_ddb_item = {
             'email': email,
@@ -135,6 +139,7 @@ def add_new_user(slack_id, email):
             'active': True,
         }
     response = put_ddb_item(users_email_table, users_email_ddb_item)
+    logging.info(f"add_new_user users_email_ddb_item: {users_email_ddb_item}")
 
     users_id_ddb_item = {
         'slack_id': slack_id,
@@ -142,6 +147,7 @@ def add_new_user(slack_id, email):
         'plan_type': 'trial',  
     }
     response = put_ddb_item(users_id_table, users_id_ddb_item)
+    logging.info(f"add_new_user users_id_ddb_item: {users_id_ddb_item}")
     return users_id_ddb_item
 
 
@@ -169,6 +175,7 @@ def get_slack_user_info(client, user_id):
     except Exception as e:
         logging.error(f'get_slack_users_info error {e}')
     else:
+        logging.info(f'get_slack_users_info info {result}')
         return result
 
 
@@ -186,16 +193,14 @@ def get_slack_id(slack_user_info):
     except AttributeError:
         return None
     else:
-        return f"{slack_user_id}-{slack_team_id}"
+        return f"{slack_team_id}-{slack_user_id}"
 
 
 def get_user_record(event):
     slack_id = f'{event.get("team")}-{event.get("user")}'
-    user_record = users_cache.get(slack_id)
-
-    if not user_record:
-        user_record = get_ddb_item(users_id_table, "slack_id", slack_id)
-        users_cache[slack_id] = user_record
+    logging.info(f'get_user_record slack_id: {slack_id}')
+    user_record = get_ddb_item(users_id_table, "slack_id", slack_id)
+    logging.info(f'get_user_record: {user_record}')
     return user_record
 
 
@@ -222,7 +227,6 @@ def default_response(message="Successs"):
 
 def get_inactive_message():
     return "Visit the Home tab to subscribe now and continue using Bounce!"
-
 
 
 def get_home_view(plan_type, active):
@@ -291,7 +295,7 @@ def get_home_view(plan_type, active):
                         "type": "plain_text",
                         "text": "Lifetime access for only $100",
                     },
-                    "url": "https://buy.stripe.com/cN23czdRg2C8ee4cMP",
+                    "url": STRIPE_LIFETIME_LINK,
                 },
             ],
         },
@@ -304,7 +308,7 @@ def get_home_view(plan_type, active):
                         "type": "plain_text",
                         "text": "Annual access for $50/year",
                     },
-                    "url": "https://buy.stripe.com/5kA7sPcNc90w7PGcMQ",
+                    "url": STRIPE_ANNUAL_LINK,
                 },
             ],
         },
@@ -317,7 +321,7 @@ def get_home_view(plan_type, active):
                         "type": "plain_text",
                         "text": "Monthly access for $5/month",
                     },
-                    "url": "https://buy.stripe.com/3csdRddRggsYfi8eUW",
+                    "url": STRIPE_MONTHLY_LINK,
                 },
             ],
         },

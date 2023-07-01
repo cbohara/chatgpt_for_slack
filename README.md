@@ -53,6 +53,8 @@ The DMs are under the App Home tab with the message tab toggle
 
 CDK deploy will not update if changes in .env.dev or .env.prod   
 
+---
+
 Ok so I can get the user ID and team ID and email from slack when users visit the home page     
 The user ID + team ID are unique across all slack workspaces so that works as a primary key    
 Billing will be mapped to user's email in Stripe     
@@ -76,3 +78,4 @@ slack app will query first table directly usin user ID + team ID to get info whe
 second table - set email as primary key and map to user ID + team ID list    
 billing backend services will update the second table which it can access using the user ID + team ID list upon event driven stripe call    
 it will then update the first table    
+
