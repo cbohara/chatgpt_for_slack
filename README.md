@@ -90,3 +90,14 @@ plan_type - trial, lifetime, annual, monthly, etc.
 cron job   
 if plan_type == trial and start_timestamp > 7 days ago:   
     active = false
+
+email table   
+stripe update >  
+email - primary key 
+work spaces - list of work spaces that are using the app 
+ "T04P94U7N2Y-U04PWB6MARE"    
+ "T04L47VTW0Z-U04KU2Y1AMS"    
+
+ id table
+ "T04P94U7N2Y-U04PWB6MARE"  - active: true, slack_install_timestamp: 1688328205, plan_type: trial
+ "T04L47VTW0Z-U04KU2Y1AMS"  - active: true, slack_install_timestamp: 1688328209, plan_type: trial

@@ -21,7 +21,8 @@ app = App(
 )
 
 ddb = boto3.resource('dynamodb')
-users_table = ddb.Table(os.environ['DDB_USERS'])
+users_id_table = ddb.Table(os.environ['DDB_USERS_ID'])
+users_email_table = ddb.Table(os.environ['DDB_USERS_EMAIL'])
 public_chats_table = ddb.Table(os.environ['DDB_PUBLIC_CHATS'])
 private_chats_table = ddb.Table(os.environ['DDB_PRIVATE_CHATS'])
 
@@ -114,20 +115,34 @@ def get_timestamp():
 
 
 def add_new_user(slack_id, email):
-    start_timestamp = get_timestamp()
-    users_ddb_item = get_ddb_item(users_table, 'slack_id', slack_id)
-    logging.info(f"add_new_user users_ddb_item: {users_ddb_item}")
-    if not users_ddb_item:
-        users_ddb_item = {
-            'slack_id': slack_id,
+    slack_install_timestamp = get_timestamp()
+    users_email_ddb_item = get_ddb_item(users_email_table, 'email', email)
+    logging.info(f"add_new_user users_email_ddb_item: {users_email_ddb_item}")
+    if not users_email_ddb_item:
+        users_email_ddb_item = {
             'email': email,
-            'slack_install_timestamp': start_timestamp,
-            'plan_type': 'trial', 
-            'active': True, 
+            'workspaces':[
+                slack_id
+            ] 
         }
-    response = put_ddb_item(users_table, users_ddb_item)
-    logging.info(f"add_new_user users_id_ddb_item: {users_ddb_item}")
-    return users_ddb_item
+    else:
+        if 'workspaces' not in users_email_ddb_item:
+            users_email_ddb_item['workspaces'] = []
+        users_email_ddb_item['workspaces'].append(slack_id)
+
+    response = put_ddb_item(users_email_table, users_email_ddb_item)
+    logging.info(f"add_new_user users_email_ddb_item: {users_email_ddb_item}")
+
+    users_id_ddb_item = {
+        'slack_id': slack_id,
+        'email': email,
+        'active': True, 
+        'plan_type': 'trial',  
+        'slack_install_timestamp': slack_install_timestamp,
+    }
+    response = put_ddb_item(users_id_table, users_id_ddb_item)
+    logging.info(f"add_new_user users_id_ddb_item: {users_id_ddb_item}")
+    return users_id_ddb_item
 
 
 def get_public_chat_id(event):
@@ -175,10 +190,11 @@ def get_slack_id(slack_user_info):
         return f"{slack_team_id}-{slack_user_id}"
 
 
+
 def get_user_record(event):
     slack_id = f'{event.get("team")}-{event.get("user")}'
     logging.info(f'get_user_record slack_id: {slack_id}')
-    user_record = get_ddb_item(users_table, "slack_id", slack_id)
+    user_record = get_ddb_item(users_id_table, "slack_id", slack_id)
     logging.info(f'get_user_record: {user_record}')
     return user_record
 
@@ -374,9 +390,9 @@ def app_home_opened_event(client, event, logger):
     user_id = event.get("user")
     slack_user_info = get_slack_user_info(client, user_id)
     slack_id = get_slack_id(slack_user_info)
-    users_item = get_ddb_item(users_table, "slack_id", slack_id)
+    users_id_item = get_ddb_item(users_id_table, "slack_id", slack_id)
 
-    if not users_item:
+    if not users_id_item:
         email = get_email(slack_user_info)
         users_id_item = add_new_user(slack_id, email)
 
