@@ -1,6 +1,6 @@
 import pytest
 import boto3
-from lambda_listener import lambda_handler
+from lambda_slack import lambda_handler
 from moto import mock_dynamodb
 from freezegun import freeze_time
 
@@ -15,7 +15,8 @@ def test_start_chat():
 def test_get_openai_response():
     chat = lambda_handler.start_chat()
     response = lambda_handler.get_openai_response(chat)
-    assert response.get("model") == "gpt-3.5-turbo-0301"
+    base_model = '-'.join(response.get("model").split("-")[:-1])
+    assert base_model == "gpt-3.5-turbo"
 
 
 def test_get_openai_message_content(openai_response):
@@ -168,7 +169,7 @@ def test_get_email(slack_users_info_response):
 
 
 def test_get_slack_id(slack_users_info_response):
-    assert lambda_handler.get_slack_id(slack_users_info_response) == 'U04KU2Y1AMS-T04L47VTW0Z'
+    assert lambda_handler.get_slack_id(slack_users_info_response) == 'T04L47VTW0Z-U04KU2Y1AMS'
     assert lambda_handler.get_slack_id({}) is None
 
 

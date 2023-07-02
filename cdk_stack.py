@@ -54,11 +54,11 @@ class SlackAppStack(Stack):
         )
 
         # Creating Lambda function that will be triggered by Lambda function URL
-        lambda_listener_function = python.PythonFunction(
+        lambda_slack_function = python.PythonFunction(
             self,
-            f'{env}-{name}-lambda-listener-function',
+            f'{env}-{name}-lambda-slack-function',
             runtime=_lambda.Runtime.PYTHON_3_9,
-            entry='lambda_listener',
+            entry='lambda_slack',
             index='lambda_handler.py',
             handler='handler',
             environment={
@@ -71,8 +71,7 @@ class SlackAppStack(Stack):
                 'SLACK_SCOPES': os.environ['SLACK_SCOPES'],
                 'SLACK_INSTALLATION_S3_BUCKET_NAME': os.environ['SLACK_INSTALLATION_S3_BUCKET_NAME'],
                 'SLACK_STATE_S3_BUCKET_NAME': os.environ['SLACK_STATE_S3_BUCKET_NAME'],
-                'DDB_USERS_ID': os.environ['DDB_USERS_ID'],
-                'DDB_USERS_EMAIL': os.environ['DDB_USERS_EMAIL'],
+                'DDB_USERS': os.environ['DDB_USERS'],
                 'DDB_PUBLIC_CHATS': os.environ['DDB_PUBLIC_CHATS'],
                 'DDB_PRIVATE_CHATS': os.environ['DDB_PRIVATE_CHATS'],
                 'SLACK_EVENTS': os.environ['SLACK_EVENTS'],
@@ -87,7 +86,7 @@ class SlackAppStack(Stack):
         )
 
         # Create function URL
-        function_url = lambda_listener_function.add_function_url(
+        function_url = lambda_slack_function.add_function_url(
             auth_type=_lambda.FunctionUrlAuthType.NONE,
         )
 
@@ -138,23 +137,16 @@ class SlackAppStack(Stack):
         lambda_role.add_to_policy(s3_policy)
 
         # Create DynamoDB table for storing users
-        users_email_table = dynamodb.Table(
+        users_table = dynamodb.Table(
             self,
-            f'{env}-{name}-users-email-table',
-            table_name=f'{env}_{name.replace("-","_")}_users_email',
-            partition_key=dynamodb.Attribute(
-                name='email',
-                type=dynamodb.AttributeType.STRING
-            ),
-            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-        )
-
-        users_id_table = dynamodb.Table(
-            self,
-            f'{env}-{name}-users-id-table',
-            table_name=f'{env}_{name.replace("-","_")}_users_id',
+            f'{env}-{name}-users-table',
+            table_name=f'{env}_{name.replace("-","_")}_users',
             partition_key=dynamodb.Attribute(
                 name='slack_id',
+                type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name='email',
                 type=dynamodb.AttributeType.STRING
             ),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -185,10 +177,9 @@ class SlackAppStack(Stack):
         )
 
         # Update lambda function to read and write to dynamodb tables
-        users_email_table.grant_read_write_data(lambda_listener_function)
-        users_id_table.grant_read_write_data(lambda_listener_function)
-        public_chats_table.grant_read_write_data(lambda_listener_function)
-        private_chats_table.grant_read_write_data(lambda_listener_function)
+        users_table.grant_read_write_data(lambda_slack_function)
+        public_chats_table.grant_read_write_data(lambda_slack_function)
+        private_chats_table.grant_read_write_data(lambda_slack_function)
 
 
 app = App()

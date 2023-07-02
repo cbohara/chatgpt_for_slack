@@ -7,7 +7,7 @@ $ python cdk_deploy.py --config .env.dev
 
 Test
 ```
-python -m pytest tests/test_lambda_listener.py
+python -m pytest tests/test_lambda_slack.py
 ```
 
 
@@ -79,3 +79,14 @@ second table - set email as primary key and map to user ID + team ID list
 billing backend services will update the second table which it can access using the user ID + team ID list upon event driven stripe call    
 it will then update the first table    
 
+{ "T04P94U7N2Y-U04PWB6MARE" : { "M" : { "start_timestamp" : { "N" : "1688243279" }, "active" : { "BOOL" : true }, "plan_type" : { "S" : "trial" } } }, "T04L47VTW0Z-U04KU2Y1AMS" : { "M" : { "start_timestamp" : { "N" : "1688243701" }, "active" : { "BOOL" : true }, "plan_type" : { "S" : "trial" } } } }
+
+primary key = slack_id = f'{team_id}-{user_id}' - efficient access for app
+sort key = email - used for backend service   
+start_timestamp = timestamp of when user first started using the app   
+active = boolean - whether they can use the functionality or not
+plan_type - trial, lifetime, annual, monthly, etc.   
+
+cron job   
+if plan_type == trial and start_timestamp > 7 days ago:   
+    active = false
