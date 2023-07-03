@@ -30,6 +30,7 @@ OPENAI_MODEL = os.environ['OPENAI_MODEL']
 MAX_CHAT_LENGTH = int(os.environ['MAX_CHAT_LENGTH'])
 SLACK_EVENTS = os.environ['SLACK_EVENTS'].split(',')
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
+SLACK_APP_URL = os.environ.get("SLACK_APP_URL")
 
 STRIPE_MONTHLY_LINK= os.environ['STRIPE_MONTHLY_LINK']
 STRIPE_ANNUAL_LINK= os.environ['STRIPE_ANNUAL_LINK']
@@ -190,7 +191,6 @@ def get_slack_id(slack_user_info):
         return f"{slack_team_id}-{slack_user_id}"
 
 
-
 def get_user_record(event):
     slack_id = f'{event.get("team")}-{event.get("user")}'
     logging.info(f'get_user_record slack_id: {slack_id}')
@@ -232,6 +232,26 @@ def get_home_view(plan_type, active):
                 "type": "mrkdwn",
                 "text": ":wave: Hi! I'm Bounce, your ChatGPT for Slack app!",
             },
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "We are always improving! Click the button below to get the latest features.",
+            },
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Update now",
+                    },
+                    "url": SLACK_APP_URL,
+                },
+            ],
         },
     ]
     if active and plan_type == "paid":
@@ -358,7 +378,8 @@ def app_mention_event(event, say):
 
 
 @app.event("message")
-def message_event(event, say):
+def message_event(event, say, logger):
+    logging.info(f"message_event event {event}")
     user_id = event.get("user")
     logging.info(f"message_event user_id {user_id}")
 
@@ -386,7 +407,7 @@ def message_event(event, say):
 
 
 @app.event("app_home_opened")
-def app_home_opened_event(client, event, logger):
+def app_home_opened_event(client, event):
     user_id = event.get("user")
     slack_user_info = get_slack_user_info(client, user_id)
     slack_id = get_slack_id(slack_user_info)
