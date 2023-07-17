@@ -1,5 +1,3 @@
-"""Webhook implementation for Stripe"""
-
 import os
 import json
 from datetime import datetime, timedelta
@@ -8,32 +6,16 @@ import hmac
 import hashlib
 from cgi import parse_header
 import boto3
-import botocore
-import botocore.session
-from aws_secretsmanager_caching import SecretCache, SecretCacheConfig
 
-client = botocore.session.get_session().create_client('secretsmanager')
-cache_config = SecretCacheConfig()
-cache = SecretCache(config=cache_config, client=client)
 
-stripe_webhook_secret_arn = os.environ.get('STRIPE_WEBHOOK_SECRET_ARN')
-event_bus_name = os.environ.get('EVENT_BUS_NAME', 'default')
+STRIPE_SECRET = os.environ.get('STRIPE_SECRET')
 
-event_bridge_client = boto3.client('events')
-
-def _add_header(request, **kwargs):
-    userAgentHeader = request.headers['User-Agent'] + ' fURLWebhook/1.0 (Stripe)'
-    del request.headers['User-Agent']
-    request.headers['User-Agent'] = userAgentHeader
-
-event_system = event_bridge_client.meta.events
-event_system.register_first('before-sign.events.PutEvents', _add_header)
 
 class PutEventError(Exception):
     """Raised when Put Events Failed"""
     pass
 
-def lambda_handler(event, _context):
+def handler(event, _context):
     """Webhook function"""
     print(event)
     headers = event.get('headers')
@@ -68,17 +50,11 @@ def lambda_handler(event, _context):
             print_error('401 Unauthorized - Invalid Signature', headers)
             return {'statusCode': 401, 'body': 'Invalid Signature'}
 
-        json_format = json.loads(json_payload)
-        detail_type = json_format.get('type', 'stripe-webhook-lambda')
+        json_dict = json.loads(json_payload)
+        email = get_email(json_dict)
+        print(f'Email: {email}')
 
-        response = forward_event(json_payload, detail_type)
-
-        if response['FailedEntryCount'] > 0:
-            print_error('500 FailedEntry Error - The event was not successfully forwarded to Amazon EventBridge\n' +
-                        str(response['Entries'][0]), headers)
-            return {'statusCode': 500, 'body': 'FailedEntry Error - The entry could not be succesfully forwarded to Amazon EventBridge'}
-
-        return {'statusCode': 202, 'body': 'Message forwarded to Amazon EventBridge'}
+        return {'statusCode': 202, 'body': 'Success'}
 
     except PutEventError as err:
         print_error(f'500 Put Events Error - {err}', headers)
@@ -122,13 +98,12 @@ def contains_valid_signature(payload, timestamp, signatures):
     """Check for the payload signature
        Stripe documentation: https://stripe.com/docs/webhooks/signatures
     """
-    secret = cache.get_secret_string(stripe_webhook_secret_arn)
     payload_bytes = get_payload_bytes(
         timestamp=timestamp,
         payload=payload
     )
     computed_signature = compute_signature(
-        payload_bytes=payload_bytes, secret=secret)
+        payload_bytes=payload_bytes, secret=STRIPE_SECRET)
     return any(
         hmac.compare_digest(event_signature, computed_signature)
         for event_signature in signatures
@@ -178,22 +153,6 @@ def timestamp_is_valid(timestamp):
     return diff < timedelta(minutes=5)
 
 
-def forward_event(payload, detail_type):
-    """Forward event to EventBridge"""
-    try:
-        return event_bridge_client.put_events(
-            Entries=[
-                {
-                    'Source': 'stripe.com',
-                    'DetailType': detail_type,
-                    'Detail': payload,
-                    'EventBusName': event_bus_name
-                },
-            ]
-        )
-    except BaseException as err:
-        raise PutEventError('Put Events Failed')
-
 def get_content_type(headers):
     """Helper function to parse content-type from the header"""
     raw_content_type = headers.get('content-type')
@@ -207,3 +166,7 @@ def get_content_type(headers):
 def print_error(message, headers):
     """Helper function to print errors"""
     print(f'ERROR: {message}\nHeaders: {str(headers)}')
+
+
+def get_email(json_dict):
+    return json_dict["data"]["object"]["charges"]["data"][0]["billing_details"]["email"]

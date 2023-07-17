@@ -130,8 +130,7 @@ class SlackAppStack(Stack):
             index='lambda_handler.py',
             handler='handler',
             environment={
-                'STRIPE_WEBHOOK_SECRET_ARN': os.environ['STRIPE_WEBHOOK_SECRET_ARN'],
-                'STRIPE_API_KEY': os.environ['STRIPE_API_KEY'],
+                'STRIPE_SECRET': os.environ['STRIPE_SECRET'],
             },
             timeout=Duration.seconds(300),
             role=lambda_role,
