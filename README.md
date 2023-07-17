@@ -101,3 +101,18 @@ work spaces - list of work spaces that are using the app
  id table
  "T04P94U7N2Y-U04PWB6MARE"  - active: true, slack_install_timestamp: 1688328205, plan_type: trial
  "T04L47VTW0Z-U04KU2Y1AMS"  - active: true, slack_install_timestamp: 1688328209, plan_type: trial
+
+# Lambda that listens to stripe events  
+https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-saas-furls.html#furls-connection-stripe
+https://stripe.com/docs/webhooks/quickstart
+https://dashboard.stripe.com/test/webhooks
+
+Lambda listens to events emitted by Stripe    
+Stripe sends events to Lambda function URL   
+Lambda function then passes those events to an Eventbus = unnecessary   
+Let's update the Lambda to write to DynamoDB directly    
+In a more resilient system we may want to write to SQS and then have another lambda process and if that fails write to dead letter queue    
+But for this first pass let's just update the Lambda to write to DynamoDB directly    
+
+Probs wanna send all events from Stripe for the sake of having it in my system   
+But again MVP = listen to payment_intent.succeeded and update the DynamoDB table    

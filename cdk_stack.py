@@ -7,6 +7,8 @@ from aws_cdk import (
     aws_lambda as _lambda,
     aws_dynamodb as dynamodb,
     aws_logs as logs,
+    aws_events as events,
+    aws_events_targets as targets,
     Stack,
     Duration,
     App
@@ -89,6 +91,55 @@ class SlackAppStack(Stack):
 
         # Create function URL
         function_url = lambda_slack_function.add_function_url(
+            auth_type=_lambda.FunctionUrlAuthType.NONE,
+        )
+
+        # Creating Lambda function that runs on a daily schedule to disable free trials when completed
+        lambda_cron_function = python.PythonFunction(
+            self,
+            f'cron-function',
+            runtime=_lambda.Runtime.PYTHON_3_9,
+            entry='lambda_cron',
+            index='lambda_handler.py',
+            handler='handler',
+            environment={
+                'DDB_USERS_ID': os.environ['DDB_USERS_ID'],
+                'FREE_TRIAL_DAYS': os.environ['FREE_TRIAL_DAYS'],
+            },
+            timeout=Duration.seconds(300),
+            role=lambda_role,
+            log_retention=logs.RetentionDays.ONE_MONTH
+        )
+
+        # Create the CloudWatch Events rule with a cron schedule
+        rule = events.Rule(
+            self,
+            'DailyLambdaSchedule',
+            schedule=events.Schedule.cron(minute='0', hour='0'),
+        )
+
+        # Add the Lambda function as a target for the CloudWatch Events rule
+        rule.add_target(targets.LambdaFunction(lambda_cron_function))
+
+        # Creating Lambda function that will be triggered by Stripe events
+        lambda_stripe_function = python.PythonFunction(
+            self,
+            f'{env}-{name}-lambda-stripe-function',
+            runtime=_lambda.Runtime.PYTHON_3_9,
+            entry='lambda_stripe',
+            index='lambda_handler.py',
+            handler='handler',
+            environment={
+                'STRIPE_WEBHOOK_SECRET_ARN': os.environ['STRIPE_WEBHOOK_SECRET_ARN'],
+                'STRIPE_API_KEY': os.environ['STRIPE_API_KEY'],
+            },
+            timeout=Duration.seconds(300),
+            role=lambda_role,
+            log_retention=logs.RetentionDays.ONE_MONTH
+        )
+
+        # Create function URL
+        function_url = lambda_stripe_function.add_function_url(
             auth_type=_lambda.FunctionUrlAuthType.NONE,
         )
 
@@ -203,6 +254,7 @@ class SlackAppStack(Stack):
         # Update lambda function to read and write to dynamodb tables
         users_email_table.grant_read_write_data(lambda_slack_function)
         users_id_table.grant_read_write_data(lambda_slack_function)
+        users_id_table.grant_read_write_data(lambda_cron_function)
         public_chats_table.grant_read_write_data(lambda_slack_function)
         private_chats_table.grant_read_write_data(lambda_slack_function)
 

@@ -118,3 +118,190 @@ def message_event():
 @pytest.fixture(scope='function')
 def app_mention_event():
     return {'client_msg_id': '410180f9-3aab-4a2d-bd7a-39582cbb7a4e', 'type': 'app_mention', 'text': '<@U05APH92U4Q> where are great places to travel in the world in july?', 'user': 'U04PWB6MARE', 'ts': '1688409244.909969', 'blocks': [{'type': 'rich_text', 'block_id': 'aCN', 'elements': [{'type': 'rich_text_section', 'elements': [{'type': 'user', 'user_id': 'U05APH92U4Q'}, {'type': 'text', 'text': ' where are great places to travel in the world in july?'}]}]}], 'team': 'T04P94U7N2Y', 'channel': 'C04PK9RLD6V', 'event_ts': '1688409244.909969'}
+
+
+@pytest.fixture(scope='function')
+def stripe_payment_intent_succeeded_event():
+    return '''{
+    "id": "evt_3NTtGyHedDKL853p1BodDrFU",
+    "object": "event",
+    "api_version": "2020-08-27",
+    "created": 1689369093,
+    "data": {
+        "object": {
+        "id": "pi_3NTtGyHedDKL853p1HdWLonB",
+        "object": "payment_intent",
+        "amount": 50,
+        "amount_capturable": 0,
+        "amount_details": {
+            "tip": {
+            }
+        },
+        "amount_received": 50,
+        "application": null,
+        "application_fee_amount": null,
+        "automatic_payment_methods": null,
+        "canceled_at": null,
+        "cancellation_reason": null,
+        "capture_method": "automatic",
+        "charges": {
+            "object": "list",
+            "data": [
+            {
+                "id": "ch_3NTtGyHedDKL853p1CAQ9kLK",
+                "object": "charge",
+                "amount": 50,
+                "amount_captured": 50,
+                "amount_refunded": 0,
+                "application": null,
+                "application_fee": null,
+                "application_fee_amount": null,
+                "balance_transaction": "txn_3NTtGyHedDKL853p1pizkmX2",
+                "billing_details": {
+                "address": {
+                    "city": null,
+                    "country": "US",
+                    "line1": null,
+                    "line2": null,
+                    "postal_code": "92116",
+                    "state": null
+                },
+                "email": "lol@lol.com",
+                "name": "Test",
+                "phone": null
+                },
+                "calculated_statement_descriptor": "MEDIUM.COM",
+                "captured": true,
+                "created": 1689369093,
+                "currency": "usd",
+                "customer": null,
+                "description": null,
+                "destination": null,
+                "dispute": null,
+                "disputed": false,
+                "failure_balance_transaction": null,
+                "failure_code": null,
+                "failure_message": null,
+                "fraud_details": {
+                },
+                "invoice": null,
+                "livemode": false,
+                "metadata": {
+                },
+                "on_behalf_of": null,
+                "order": null,
+                "outcome": {
+                "network_status": "approved_by_network",
+                "reason": null,
+                "risk_level": "normal",
+                "risk_score": 49,
+                "seller_message": "Payment complete.",
+                "type": "authorized"
+                },
+                "paid": true,
+                "payment_intent": "pi_3NTtGyHedDKL853p1HdWLonB",
+                "payment_method": "pm_1NTtGyHedDKL853pU6Ipzxh1",
+                "payment_method_details": {
+                "card": {
+                    "brand": "visa",
+                    "checks": {
+                    "address_line1_check": null,
+                    "address_postal_code_check": "pass",
+                    "cvc_check": "pass"
+                    },
+                    "country": "US",
+                    "exp_month": 1,
+                    "exp_year": 2027,
+                    "fingerprint": "thsI0J7hfApLMnKm",
+                    "funding": "credit",
+                    "installments": null,
+                    "last4": "4242",
+                    "mandate": null,
+                    "network": "visa",
+                    "network_token": {
+                    "used": false
+                    },
+                    "three_d_secure": null,
+                    "wallet": {
+                    "dynamic_last4": null,
+                    "link": {
+                    },
+                    "type": "link"
+                    }
+                },
+                "type": "card"
+                },
+                "receipt_email": null,
+                "receipt_number": null,
+                "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xSUg5MlZIZWRES0w4NTNwKIb0xqUGMgZwbtGPgDE6LBakgfs11wrl2KyaFaEf8dXsHkTRoJ4UKixa0lReDUlFeuEnP77qdFHarTuX",
+                "refunded": false,
+                "refunds": {
+                "object": "list",
+                "data": [
+                ],
+                "has_more": false,
+                "total_count": 0,
+                "url": "/v1/charges/ch_3NTtGyHedDKL853p1CAQ9kLK/refunds"
+                },
+                "review": null,
+                "shipping": null,
+                "source": null,
+                "source_transfer": null,
+                "statement_descriptor": null,
+                "statement_descriptor_suffix": null,
+                "status": "succeeded",
+                "transfer_data": null,
+                "transfer_group": null
+            }
+            ],
+            "has_more": false,
+            "total_count": 1,
+            "url": "/v1/charges?payment_intent=pi_3NTtGyHedDKL853p1HdWLonB"
+        },
+        "client_secret": "pi_3NTtGyHedDKL853p1HdWLonB_secret_yerkKwtngqhPzxwKb4xkYb2S3",
+        "confirmation_method": "automatic",
+        "created": 1689369092,
+        "currency": "usd",
+        "customer": null,
+        "description": null,
+        "invoice": null,
+        "last_payment_error": null,
+        "latest_charge": "ch_3NTtGyHedDKL853p1CAQ9kLK",
+        "livemode": false,
+        "metadata": {
+        },
+        "next_action": null,
+        "on_behalf_of": null,
+        "payment_method": "pm_1NTtGyHedDKL853pU6Ipzxh1",
+        "payment_method_options": {
+            "card": {
+            "installments": null,
+            "mandate_options": null,
+            "network": null,
+            "request_three_d_secure": "automatic"
+            }
+        },
+        "payment_method_types": [
+            "card"
+        ],
+        "processing": null,
+        "receipt_email": null,
+        "review": null,
+        "setup_future_usage": null,
+        "shipping": null,
+        "source": null,
+        "statement_descriptor": null,
+        "statement_descriptor_suffix": null,
+        "status": "succeeded",
+        "transfer_data": null,
+        "transfer_group": null
+        }
+    },
+    "livemode": false,
+    "pending_webhooks": 1,
+    "request": {
+        "id": "req_MgItVLYxYi32VM",
+        "idempotency_key": "3a3cf1f0-54e3-46f6-b228-2ad7ee5c14d4"
+    },
+    "type": "payment_intent.succeeded"
+    }'''
