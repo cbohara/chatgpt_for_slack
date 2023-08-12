@@ -254,7 +254,7 @@ def get_home_view(plan_type, active):
             ],
         },
     ]
-    if active and plan_type == "paid":
+    if plan_type == "paid":
         blocks.append(
             {
                 "type": "section",

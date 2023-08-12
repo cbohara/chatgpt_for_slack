@@ -75,6 +75,7 @@ class SlackAppStack(Stack):
                 'SLACK_SCOPES': os.environ['SLACK_SCOPES'],
                 'SLACK_INSTALLATION_S3_BUCKET_NAME': os.environ['SLACK_INSTALLATION_S3_BUCKET_NAME'],
                 'SLACK_STATE_S3_BUCKET_NAME': os.environ['SLACK_STATE_S3_BUCKET_NAME'],
+                'SLACK_APP_URL': os.environ['SLACK_APP_URL'],
                 'DDB_USERS_ID': os.environ['DDB_USERS_ID'],
                 'DDB_USERS_EMAIL': os.environ['DDB_USERS_EMAIL'],
                 'DDB_PUBLIC_CHATS': os.environ['DDB_PUBLIC_CHATS'],
