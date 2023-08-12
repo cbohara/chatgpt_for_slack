@@ -3,8 +3,8 @@ from constructs import Construct
 from aws_cdk import (
     aws_iam as iam,
     aws_s3 as s3,
-    aws_lambda_python_alpha as python,
-    aws_lambda as _lambda,
+    aws_lambda,
+    aws_lambda_python_alpha as lambda_python,
     aws_dynamodb as dynamodb,
     aws_logs as logs,
     aws_events as events,
@@ -56,10 +56,12 @@ class SlackAppStack(Stack):
         )
 
         # Creating Lambda function that will be triggered by Lambda function URL
-        lambda_slack_function = python.PythonFunction(
+        lambda_slack_function_name=f'{env}-{name}-lambda-slack-function'
+        lambda_slack_function = lambda_python.PythonFunction(
             self,
-            f'{env}-{name}-lambda-slack-function',
-            runtime=_lambda.Runtime.PYTHON_3_9,
+            lambda_slack_function_name,
+            function_name=lambda_slack_function_name,
+            runtime=aws_lambda.Runtime.PYTHON_3_9,
             entry='lambda_slack',
             index='lambda_handler.py',
             handler='handler',
@@ -86,19 +88,27 @@ class SlackAppStack(Stack):
             },
             timeout=Duration.seconds(300),
             role=lambda_role,
-            log_retention=logs.RetentionDays.ONE_MONTH
+        )
+
+        lambda_slack_function_log_group = logs.LogGroup(
+            self,
+            f'{lambda_slack_function_name}-logs',
+            log_group_name=f"/aws/lambda/{lambda_slack_function_name}",
+            retention=logs.RetentionDays.ONE_MONTH
         )
 
         # Create function URL
         function_url = lambda_slack_function.add_function_url(
-            auth_type=_lambda.FunctionUrlAuthType.NONE,
+            auth_type=aws_lambda.FunctionUrlAuthType.NONE,
         )
 
         # Creating Lambda function that runs on a daily schedule to disable free trials when completed
-        lambda_cron_function = python.PythonFunction(
+        lambda_cron_function_name=f'{env}-{name}-lambda-cron-function'
+        lambda_cron_function = lambda_python.PythonFunction(
             self,
-            f'cron-function',
-            runtime=_lambda.Runtime.PYTHON_3_9,
+            lambda_cron_function_name,
+            function_name=lambda_cron_function_name,
+            runtime=aws_lambda.Runtime.PYTHON_3_9,
             entry='lambda_cron',
             index='lambda_handler.py',
             handler='handler',
@@ -108,7 +118,13 @@ class SlackAppStack(Stack):
             },
             timeout=Duration.seconds(300),
             role=lambda_role,
-            log_retention=logs.RetentionDays.ONE_MONTH
+        )
+
+        lambda_cron_function_log_group = logs.LogGroup(
+            self,
+            f'{lambda_cron_function_name}-logs',
+            log_group_name=f"/aws/lambda/{lambda_cron_function_name}",
+            retention=logs.RetentionDays.ONE_MONTH
         )
 
         # Create the CloudWatch Events rule with a cron schedule
@@ -122,10 +138,12 @@ class SlackAppStack(Stack):
         rule.add_target(targets.LambdaFunction(lambda_cron_function))
 
         # Creating Lambda function that will be triggered by Stripe events
-        lambda_stripe_function = python.PythonFunction(
+        lambda_stripe_function_name=f'{env}-{name}-lambda-stripe-function'
+        lambda_stripe_function = lambda_python.PythonFunction(
             self,
-            f'{env}-{name}-lambda-stripe-function',
-            runtime=_lambda.Runtime.PYTHON_3_9,
+            lambda_stripe_function_name,
+            function_name=lambda_stripe_function_name,
+            runtime=aws_lambda.Runtime.PYTHON_3_9,
             entry='lambda_stripe',
             index='lambda_handler.py',
             handler='handler',
@@ -134,12 +152,18 @@ class SlackAppStack(Stack):
             },
             timeout=Duration.seconds(300),
             role=lambda_role,
-            log_retention=logs.RetentionDays.ONE_MONTH
+        )
+
+        lambda_stripe_function_log_group = logs.LogGroup(
+            self,
+            f'{lambda_stripe_function_name}-logs',
+            log_group_name=f"/aws/lambda/{lambda_stripe_function_name}",
+            retention=logs.RetentionDays.ONE_MONTH
         )
 
         # Create function URL
         function_url = lambda_stripe_function.add_function_url(
-            auth_type=_lambda.FunctionUrlAuthType.NONE,
+            auth_type=aws_lambda.FunctionUrlAuthType.NONE,
         )
 
 #        # Create S3 bucket for installation credentials
