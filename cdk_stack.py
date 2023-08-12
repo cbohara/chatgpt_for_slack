@@ -149,6 +149,8 @@ class SlackAppStack(Stack):
             handler='handler',
             environment={
                 'STRIPE_SECRET': os.environ['STRIPE_SECRET'],
+                'DDB_USERS_ID': os.environ['DDB_USERS_ID'],
+                'DDB_USERS_EMAIL': os.environ['DDB_USERS_EMAIL'],
             },
             timeout=Duration.seconds(300),
             role=lambda_role,
