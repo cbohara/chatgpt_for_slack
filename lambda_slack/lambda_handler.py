@@ -221,7 +221,7 @@ def default_response(message="Successs"):
 
 
 def get_inactive_message():
-    return "Visit the Home tab to subscribe now and continue using Bounce!"
+    return "We're thrilled you've been enjoying Bounce! Your free trial has wrapped up, but there's more value in store. Swing by the Home tab to continue taking advantage of enhanced productivity – subscribe now to keep bouncing with us! :rocket:"
 
 
 def get_home_view(plan_type, active):
