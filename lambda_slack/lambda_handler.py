@@ -3,7 +3,7 @@ import json
 import logging
 import datetime
 import boto3
-import openai
+from openai import OpenAI
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from slack_bolt import App
@@ -27,6 +27,7 @@ public_chats_table = ddb.Table(os.environ['DDB_PUBLIC_CHATS'])
 private_chats_table = ddb.Table(os.environ['DDB_PRIVATE_CHATS'])
 
 OPENAI_MODEL = os.environ['OPENAI_MODEL']
+OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
 MAX_CHAT_LENGTH = int(os.environ['MAX_CHAT_LENGTH'])
 SLACK_EVENTS = os.environ['SLACK_EVENTS'].split(',')
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
@@ -44,8 +45,8 @@ def start_chat():
 
 
 def get_openai_response(chat):
-    # TODO - Avoid hitting max token limit
-    response = openai.ChatCompletion.create(
+    client = OpenAI(api_key=OPENAI_API_KEY)
+    response = client.chat.completions.create(
         model=OPENAI_MODEL,
         messages=chat
     )
@@ -55,7 +56,7 @@ def get_openai_response(chat):
 
 def get_openai_message_content(response):
     try:
-        return response["choices"][0]["message"]["content"]
+        return response.choices[0].message.content
     except Exception as e:
         logging.error(f"Error getting OpenAI message content: {e}")
         return "Sorry, we are unable to process your request at this time. The OpenAI API is currently unavailable. Please try again later."

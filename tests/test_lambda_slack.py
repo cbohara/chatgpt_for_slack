@@ -15,14 +15,14 @@ def test_start_chat():
 @pytest.mark.openai_api
 def test_get_openai_response():
     chat = lambda_handler.start_chat()
+    chat.append({"role": "user", "content": "Is ChatGPT for Slack a good idea?"})
     response = lambda_handler.get_openai_response(chat)
-    base_model = '-'.join(response.get("model").split("-")[:-1])
-    assert base_model.startswith("gpt-4o")
+    assert response.model.startswith("gpt-4o")
 
 
 def test_get_openai_message_content(openai_response):
     message_content = lambda_handler.get_openai_message_content(openai_response)
-    assert message_content == "Thank you! How may I assist you today?"
+    assert message_content.startswith("Integrating ChatGPT with Slack can offer several advantages, making it a potentially good idea for many organizations:")
 
     openai_response = {"choices": []}
     assert lambda_handler.get_openai_message_content(openai_response) == "Sorry, we are unable to process your request at this time. The OpenAI API is currently unavailable. Please try again later."

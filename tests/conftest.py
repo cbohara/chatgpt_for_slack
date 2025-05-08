@@ -1,31 +1,14 @@
 import pytest
 import boto3
 from moto import mock_dynamodb
-
+from openai.types.chat import ChatCompletion, ChatCompletionMessage
+from openai.types.chat.chat_completion import Choice
+from openai.types.completion_usage import CompletionUsage, CompletionTokensDetails, PromptTokensDetails
 
 @pytest.fixture
 def openai_response():
-    return {
-        "choices": [
-            {
-                "finish_reason": "stop",
-                "index": 0,
-                "message": {
-                    "content": "Thank you! How may I assist you today?",
-                    "role": "assistant"
-                }
-            }
-        ],
-        "created": 1677963856,
-        "id": "chatcmpl-6qTL6bMrSEtUjCRbM4f3AkcaGwbZW",
-        "model": "gpt-3.5-turbo-0301",
-        "object": "chat.completion",
-        "usage": {
-            "completion_tokens": 12,
-            "prompt_tokens": 13,
-            "total_tokens": 25
-        }
-    }
+    return ChatCompletion(id='chatcmpl-BUxfc2JT3rlpL70l9hBQZYAILNCFQ', choices=[Choice(finish_reason='stop', index=0, logprobs=None, message=ChatCompletionMessage(content='Integrating ChatGPT with Slack can offer several advantages, making it a potentially good idea for many organizations:\n\n1. **Enhanced Communication**: ChatGPT can help facilitate clearer communication by providing quick answers to questions, summarizing discussions, and generating content.\n\n2. **24/7 Availability**: Unlike human team members, ChatGPT can be available around the clock to assist with queries, which can be particularly helpful for distributed teams or in customer support roles.\n\n3. **Increased Productivity**: By automating routine tasks, answering FAQs, or generating meeting summaries, ChatGPT can free up time for employees to focus on more complex and creative tasks.\n\n4. **Knowledge Sharing**: It can act as a knowledge base, helping team members quickly find the information they need without having to sift through long chat histories or documentation.\n\n5. **Improved Collaboration**: ChatGPT can assist in brainstorming sessions or project planning by providing suggestions and ideas based on the context of the conversation.\n\n6. **Personalization**: The model can be trained or configured to understand the specific needs and context of a team, making it more effective in providing relevant information or assistance.\n\nHowever, there are also some considerations to keep in mind:\n\n1. **Information Accuracy**: ChatGPT might not always provide accurate or up-to-date information. Teams should ensure that critical decisions are made with human oversight.\n\n2. **Privacy and Security**: Integrating AI in communication tools raises concerns about data privacy and security, especially if sensitive information is shared.\n\n3. **Dependence on Technology**: Teams may become overly reliant on AI assistance, which could impact their problem-solving skills and collaboration.\n\n4. **Miscommunication**: AI may misinterpret context or nuances in conversation, leading to misunderstandings.\n\n5. **Integration Challenges**: Depending on the existing infrastructure, integrating ChatGPT with Slack might require technical effort and resources.\n\nOverall, whether or not ChatGPT for Slack is a good idea depends on the specific needs and dynamics of your team. Proper implementation, oversight, and training can maximize benefits while mitigating potential drawbacks.', refusal=None, role='assistant', annotations=[], audio=None, function_call=None, tool_calls=None))], created=1746718912, model='gpt-4o-mini-2024-07-18', object='chat.completion', service_tier='default', system_fingerprint='fp_0392822090', usage=CompletionUsage(completion_tokens=420, prompt_tokens=26, total_tokens=446, completion_tokens_details=CompletionTokensDetails(accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0), prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0)))
+
 
 @pytest.fixture(scope='function')
 def dynamodb_mock():
