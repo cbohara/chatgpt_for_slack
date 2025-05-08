@@ -1,3 +1,4 @@
+import os
 import pytest
 import boto3
 from lambda_slack import lambda_handler
@@ -16,7 +17,7 @@ def test_get_openai_response():
     chat = lambda_handler.start_chat()
     response = lambda_handler.get_openai_response(chat)
     base_model = '-'.join(response.get("model").split("-")[:-1])
-    assert base_model == "gpt-3.5-turbo"
+    assert base_model.startswith("gpt-4o")
 
 
 def test_get_openai_message_content(openai_response):

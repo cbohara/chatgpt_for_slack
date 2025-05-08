@@ -1,11 +1,18 @@
 # ChatGPT for Slack app
 
-Deploy
+Local setup
 ```
-$ python cdk_deploy.py --config .env.dev
+python3.9 -m venv venv
+. venv/bin/activate
+pip install -r requirements.txt
 ```
 
-Test
+Run unit tests
 ```
 python -m pytest tests/test_lambda_slack.py
+```
+
+Deploy to AWS
+```
+python cdk_deploy.py --config .env.dev
 ```
