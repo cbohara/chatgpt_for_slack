@@ -8,3 +8,5 @@ tests/__pycache__/
 tets/.pytest_cache/
 .DS_Store
 .coverage
+cdk.context.json
+slack_app_manifest.json
