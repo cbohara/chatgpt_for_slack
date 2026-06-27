@@ -1,4 +1,4 @@
-# ChatGPT for Slack app
+# Bounce
 
 ## Local
 
